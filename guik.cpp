@@ -430,54 +430,48 @@ gboolean on_key_press(GtkWidget * widget, GdkEventKey * event, gpointer user_dat
         main_nb.insert_char('<');
         break;
     case GDK_KEY_0:
-        alt ? main_nb.key_makecell(CELLTYPE_BOLDTEXT)
+        alt ? main_nb.key_makecell(cellt_BOLDTEXT)
             : main_nb.insert_char('0');
         break;
     case GDK_KEY_1:
-        alt ? main_nb.key_makecell(CELLTYPE_TITLE)
+        alt ? main_nb.key_makecell(cellt_TITLE)
             : main_nb.insert_char('1');
         break;
     case GDK_KEY_2:
-        alt ? main_nb.key_makecell(CELLTYPE_SECTION)
+        alt ? main_nb.key_makecell(cellt_SECTION)
             : ctrl ? main_nb.insert_sqrt() : main_nb.insert_char('2');
         break;
     case GDK_KEY_3:
-        alt ? main_nb.key_makecell(CELLTYPE_SUBSECTION)
+        alt ? main_nb.key_makecell(cellt_SUBSECTION)
             : main_nb.insert_char('3');
         break;
     case GDK_KEY_4:
-        alt ? main_nb.key_makecell(CELLTYPE_SUBSUBSECTION)
+        alt ? main_nb.key_makecell(cellt_SUBSUBSECTION)
             : (ctrl ? main_nb.insert_underscript() : main_nb.insert_char('4'));
         break;
     case GDK_KEY_5:
-        alt ? main_nb.key_makecell(CELLTYPE_TEXT)
+        alt ? main_nb.key_makecell(cellt_TEXT)
             : ctrl ? main_nb.key_switch() : main_nb.insert_char('5');
         break;
     case GDK_KEY_6:
-        alt ? main_nb.key_makecell(CELLTYPE_MESSAGE)
+        alt ? main_nb.key_makecell(cellt_MESSAGE)
             : (ctrl ? main_nb.insert_superscript() : main_nb.insert_char('6'));
         break;
     case GDK_KEY_7:
-        alt ? main_nb.key_makecell(CELLTYPE_PRINT)
+        alt ? main_nb.key_makecell(cellt_PRINT)
             : (ctrl ? main_nb.insert_overscript() : main_nb.insert_char('7'));
         break;
     case GDK_KEY_8:
-        alt ? main_nb.key_makecell(CELLTYPE_OUTPUT)
+        alt ? main_nb.key_makecell(cellt_OUTPUT)
             : main_nb.insert_char('8');
         break;
     case GDK_KEY_9:
-        alt ? main_nb.key_makecell(CELLTYPE_INPUT)
+        alt ? main_nb.key_makecell(cellt_INPUT)
             : main_nb.insert_char('9');
         break;
     case GDK_KEY_space:
         if (ctrl)
         {
-            boxnode * newrow = boxnode_create(BNTYPE_ROW, 12);
-            boxnode_append_cstr(newrow, "test");
-            boxnode_append(newrow, bfrom_ptr(&box_null));
-            box newcell = boxnode_make(BNTYPE_CELL, bfrom_node(newrow));
-            bto_node(newcell)->extra0 = CELLTYPE_OUTPUT;
-            main_nb.print_cell(newcell);
         }
         else
         {
@@ -561,95 +555,84 @@ std::cout << "<gui reader>: CMD_EXPR err: " << err << "  e: " << ex_tostring_ful
             {
                 std::cerr << "ERROR gui: could not read CMD_EXPR - error " << err << std::endl;
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsOutputNamePacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sOutputNamePacket.get(), 1))
             {
                 main_nb.io_mutex.lock();
                 main_nb.out_name.reset(e.copychild(1));
                 main_nb.io_mutex.unlock();
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsInputNamePacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sInputNamePacket.get(), 1))
             {
                 main_nb.io_mutex.lock();
                 main_nb.in_name.reset(e.copychild(1));
                 main_nb.io_mutex.unlock();
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsReturnTextPacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sReturnTextPacket.get(), 1))
             {
-                boxnode * row = boxnode_convert_from_ex(e.child(1));
-                if (row == nullptr || boxnode_type(row) != BNTYPE_ROW)
+                boxbase * row = boxbase_convert_from_ex(e.child(1));
+                if (row == nullptr || row->get_type() != BNTYPE_ROW)
                 {
                     std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
                     if (row != nullptr)
-                    {
-                        box_node_delete(row);
-                    }
+                        delete row;
                 }
                 else
                 {
-                    box cell = boxnode_make(BNTYPE_CELL, bfrom_node(row));
+                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_OUTPUT);
                     if (main_nb.out_name.get() != nullptr)
                     {
-                        boxnode * label = boxnode_convert_from_ex(main_nb.out_name.get());
-                        if (label == nullptr || boxnode_type(label) != BNTYPE_ROW)
+                        boxbase * label = boxbase_convert_from_ex(main_nb.out_name.get());
+                        if (label == nullptr || label->get_type() != BNTYPE_ROW)
                         {
                             std::cerr << "ERROR gui: could not convert " << ex_tostring_full(main_nb.out_name.get()) << std::endl;
                             if (label != nullptr)
-                            {
-                                box_node_delete(label);
-                            }
+                                delete label;
                         }
                         else
                         {
-                            boxnode_append(cell, bfrom_node(label));
+                            cell->label.cbox = dynamic_cast<rowbox*>(label);
                         }
                     }
-                    bto_node(cell)->extra0 = CELLTYPE_OUTPUT;
                     main_nb.io_mutex.lock();
                     main_nb.print_cell(cell);
                     main_nb.io_mutex.unlock();
                     g_idle_add(myfunc, NULL);
                 }
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsMessagePacket.get(), 2))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sMessagePacket.get(), 2))
             {
-                e.replacechild(0, gs.symsList.copy());
-                e.reset(emake_node(gs.symsRowBox.copy(), e.release()));
-                boxnode * row = boxnode_convert_from_ex(e.get());
-                if (row == nullptr || boxnode_type(row) != BNTYPE_ROW)
+                e.replacechild(0, gs.sym_sList.copy());
+                e.reset(emake_node(gs.sym_sRowBox.copy(), e.release()));
+                boxbase * row = boxbase_convert_from_ex(e.get());
+                if (row == nullptr || row->get_type() != BNTYPE_ROW)
                 {
                     std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
                     if (row != nullptr)
-                    {
-                        box_node_delete(row);
-                    }
+                        delete row;
                 }
                 else
                 {
-                    box cell = boxnode_make(BNTYPE_CELL, bfrom_node(row));
-                    bto_node(cell)->extra0 = CELLTYPE_MESSAGE;
+                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_MESSAGE);
                     main_nb.io_mutex.lock();
                     main_nb.print_cell(cell);
                     main_nb.io_mutex.unlock();
                     g_idle_add(myfunc, NULL);
                 }
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsTextPacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sTextPacket.get(), 1))
             {
-                e.replacechild(0, gs.symsList.copy());
-                e.reset(emake_node(gs.symsRowBox.copy(), e.release()));
-                boxnode * row = boxnode_convert_from_ex(e.get());
-                if (row == nullptr || boxnode_type(row) != BNTYPE_ROW)
+                e.replacechild(0, gs.sym_sList.copy());
+                e.reset(emake_node(gs.sym_sRowBox.copy(), e.release()));
+                boxbase * row = boxbase_convert_from_ex(e.get());
+                if (row == nullptr || row->get_type() != BNTYPE_ROW)
                 {
                     std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
                     if (row != nullptr)
-                    {
-                        box_node_delete(row);
-                    }
+                        delete row;
                 }
                 else
                 {
-                    box cell = boxnode_make(BNTYPE_CELL, bfrom_node(row));
-                    bto_node(cell)->extra0 = CELLTYPE_PRINT;
+                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_PRINT);
                     main_nb.io_mutex.lock();
                     main_nb.print_cell(cell);
                     main_nb.io_mutex.unlock();
@@ -977,7 +960,7 @@ gtk_menu_shell_append(GTK_MENU_SHELL(menubar), palettes);
 
 
         drawing_area = gtk_drawing_area_new();
-        gtk_widget_set_size_request(GTK_WIDGET(drawing_area), 700, 300);
+        gtk_widget_set_size_request(GTK_WIDGET(drawing_area), 800, 700);
     	gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(vbox), drawing_area, TRUE, TRUE, 0);
         gtk_widget_show(menubar);

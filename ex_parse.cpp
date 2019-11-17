@@ -177,104 +177,104 @@ er op_to_sym(Operator op)
     switch (op)
     {
         case op_inf_PatternTest:
-            return gs.symsPatternTest.get();
+            return gs.sym_sPatternTest.get();
         case op_inf_StringExpression:
-            return gs.symsStringExpression.get();
+            return gs.sym_sStringExpression.get();
         case op_pre_Not:
-            return gs.symsNot.get();
+            return gs.sym_sNot.get();
         case op_inf_SameQ:
-            return gs.symsSameQ.get();
+            return gs.sym_sSameQ.get();
         case op_inf_UnsameQ:
-            return gs.symsUnsameQ.get();
+            return gs.sym_sUnsameQ.get();
         case op_inf_Equal:
-            return gs.symsEqual.get();
+            return gs.sym_sEqual.get();
         case op_inf_Unequal:
-            return gs.symsUnequal.get();
+            return gs.sym_sUnequal.get();
         case op_inf_Greater:
-            return gs.symsGreater.get();
+            return gs.sym_sGreater.get();
         case op_inf_GreaterEqual:
-            return gs.symsGreaterEqual.get();
+            return gs.sym_sGreaterEqual.get();
         case op_inf_Less:
-            return gs.symsLess.get();
+            return gs.sym_sLess.get();
         case op_inf_LessEqual:
-            return gs.symsLessEqual.get();
+            return gs.sym_sLessEqual.get();
         case op_inf_Condition:
-            return gs.symsCondition.get();
+            return gs.sym_sCondition.get();
         case op_inf_StringJoin:
-            return gs.symsStringJoin.get();
+            return gs.sym_sStringJoin.get();
         case op_pre_PreDecrement:
-            return gs.symsPreDecrement.get();
+            return gs.sym_sPreDecrement.get();
         case op_post_Decrement:
-            return gs.symsDecrement.get();
+            return gs.sym_sDecrement.get();
         case op_pre_PreIncrement:
-            return gs.symsPreIncrement.get();
+            return gs.sym_sPreIncrement.get();
         case op_post_Increment:
-            return gs.symsIncrement.get();
+            return gs.sym_sIncrement.get();
         case op_inf_ReplaceRepeated:
-            return gs.symsReplaceRepeated.get();
+            return gs.sym_sReplaceRepeated.get();
         case op_inf_ReplaceAll:
-            return gs.symsReplaceAll.get();
+            return gs.sym_sReplaceAll.get();
         case op_inf_AddTo:
-            return gs.symsAddTo.get();
+            return gs.sym_sAddTo.get();
         case op_post_Derivative:
-            return gs.symsDerivative.get();
+            return gs.sym_sDerivative.get();
         case op_inf_Map:
-            return gs.symsMap.get();
+            return gs.sym_sMap.get();
         case op_inf_MapAll:
-            return gs.symsMapAll.get();
+            return gs.sym_sMapAll.get();
         case op_inf_CompoundExpression:
-            return gs.symsCompoundExpression.get();
+            return gs.sym_sCompoundExpression.get();
         case op_inf_Rule:
-            return gs.symsRule.get();
+            return gs.sym_sRule.get();
         case op_inf_RuleDelayed:
-            return gs.symsRuleDelayed.get();
+            return gs.sym_sRuleDelayed.get();
         case op_inf_Apply:
-            return gs.symsApply.get();
+            return gs.sym_sApply.get();
         case op_inf_Set:
-            return gs.symsSet.get();
+            return gs.sym_sSet.get();
         case op_inf_UpSet:
-            return gs.symsUpSet.get();
+            return gs.sym_sUpSet.get();
         case op_inf_UpSetDelayed:
-            return gs.symsUpSetDelayed.get();
+            return gs.sym_sUpSetDelayed.get();
         case op_post_Function:
-            return gs.symsFunction.get();
+            return gs.sym_sFunction.get();
         case op_inf_SetDelayed:
-            return gs.symsSetDelayed.get();
+            return gs.sym_sSetDelayed.get();
         case op_pre_Plus:
         case op_inf_Plus:
-            return gs.symsPlus.get();
+            return gs.sym_sPlus.get();
         case op_pre_Minus:
         case op_inf_Minus:
-            return gs.symsMinus.get();
+            return gs.sym_sMinus.get();
         case op_inf_Times:
-            return gs.symsTimes.get();
+            return gs.sym_sTimes.get();
         case op_inf_Divide:
-            return gs.symsDivide.get();
+            return gs.sym_sDivide.get();
         case op_inf_Power:
-            return gs.symsPower.get();
+            return gs.sym_sPower.get();
         case op_post_Factorial:
-            return gs.symsFactorial.get();
+            return gs.sym_sFactorial.get();
         case op_post_Factorial2:
-            return gs.symsFactorial2.get();
+            return gs.sym_sFactorial2.get();
         case op_post_Unset:
-            return gs.symsUnset.get();
+            return gs.sym_sUnset.get();
 
 
         case op_post_RepeatedNull:
-            return gs.symsRepeatedNull.get();
+            return gs.sym_sRepeatedNull.get();
         case op_post_Repeated:
-            return gs.symsRepeated.get();
+            return gs.sym_sRepeated.get();
         case op_inf_Dot:
-            return gs.symsDot.get();
+            return gs.sym_sDot.get();
         case op_inf_Alternatives:
-            return gs.symsAlternatives.get();
+            return gs.sym_sAlternatives.get();
         case op_inf_Or:
-            return gs.symsOr.get();
+            return gs.sym_sOr.get();
         case op_inf_And:
-            return gs.symsAnd.get();
+            return gs.sym_sAnd.get();
 
         case op_inf_MessageName:
-            return gs.symsMessageName.get();
+            return gs.sym_sMessageName.get();
 
         default:
             return nullptr;
@@ -380,7 +380,7 @@ void eparser::popop(Precedence prec)
             {
                 assert(n-q>=5);
                 assert((n-q)&1);
-                uex e(gs.symsInequality.get(), n - q);
+                uex e(gs.sym_sInequality.get(), n - q);
                 for (k=q; k+1<n; k+=2) {
                     assert(!eis_raw(estack[k].get()));
                     e.push_back(estack[k].copy());
@@ -398,8 +398,8 @@ void eparser::popop(Precedence prec)
                 if (n >= 5 && !eis_raw(estack[n-5].get())
                            && eis_raw(estack[n-4].get(), op_inf_tag))
                 {
-                    uex e(emake_node(ecopy(op == op_inf_Set ? gs.symsTagSet.get()
-                                                            : gs.symsTagSetDelayed.get()),
+                    uex e(emake_node(ecopy(op == op_inf_Set ? gs.sym_sTagSet.get()
+                                                            : gs.sym_sTagSetDelayed.get()),
                                        ecopy(estack[n-5].get()),
                                        ecopy(estack[n-3].get()),
                                        ecopy(estack[n-1].get())));
@@ -454,7 +454,7 @@ void eparser::popop(Precedence prec)
                             e.push_back(estack[m+2*k-2].copy());
                         }
                         estack.resize(m);
-                        assert(evalid_contentflags(e.get()));
+                        assert(evalid_bucketflags(e.get()));
                         estack.push_back(wex(e.release()));
                     }
                 }
@@ -488,11 +488,11 @@ void eparser::popop(Precedence prec)
                     k=1;
                     uex e(estack[m+2*k-2].copy());
                     k=2;
-                    h = eis_sym(e.get()) ? gs.symsPattern.get() : gs.symsOptional.get();
+                    h = eis_sym(e.get()) ? gs.sym_sPattern.get() : gs.sym_sOptional.get();
                     e.reset(emake_node(ecopy(h), e.release(), estack[m+2*k-2].copy()));
                     for (k=3; k<=len; k++)
                     {
-                        e.reset(emake_node(gs.symsOptional.copy(), e.release(), estack[m+2*k-2].copy()));
+                        e.reset(emake_node(gs.sym_sOptional.copy(), e.release(), estack[m+2*k-2].copy()));
                     }
                     estack.resize(m);
                     estack.push_back(wex(e.release()));
@@ -539,7 +539,7 @@ void eparser::popop(Precedence prec)
             {
                 uex f(estack[n-1].copy());
                 estack.resize(n-2);
-                pushex(num_Minus1(f.release()));
+                pushex(num_Minus1(f.get()));
             }
             else
             {
@@ -771,7 +771,7 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
             }
             case op_post_Derivative:
             {
-                pushop_postfix(static_cast<Operator>(c0), emake_node(ecopy(gs.symsDerivative.get()), emake_int_ui(eto_raw(currTk.get())->dat[1])));
+                pushop_postfix(static_cast<Operator>(c0), emake_node(ecopy(gs.sym_sDerivative.get()), emake_int_ui(eto_raw(currTk.get())->dat[1])));
                 break;
             }
             case op_post_Unset:
@@ -781,8 +781,8 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
                 if (n >= 3 && !eis_raw(estack[n-3].get())
                            && eis_raw(estack[n-2].get(), op_inf_tag))
                 {
-                    assert(ehas_head_sym_length(estack[n-1].get(), gs.symsUnset.get(), 1));
-                    uex e(emake_node(gs.symsTagUnset.copy(),
+                    assert(ehas_head_sym_length(estack[n-1].get(), gs.sym_sUnset.get(), 1));
+                    uex e(emake_node(gs.sym_sTagUnset.copy(),
                                        estack[n-3].copy(),
                                        estack[n-1].copychild(1)));
                     estack.resize(n-3);
@@ -860,7 +860,7 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
                 {
                     pushop_infix(op_inf_CompoundExpression);
                     if (error) {return;}
-                    pushex(ecopy(gs.symsNull.get()));
+                    pushex(ecopy(gs.sym_sNull.get()));
                     if (error) {return;}            
                     popop(prec_inf_CompoundExpression - 1);
                     if (error) {return;}            
@@ -921,7 +921,7 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
                         m--;
                     }
                 }
-                uex e(gs.symsList.get(), len);
+                uex e(gs.sym_sList.get(), len);
                 for (k = 1; k <= len; k++)
                 {
                     e.push_back(estack[m+2*k-1].copy());
@@ -953,7 +953,7 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
                         m--;
                     }
                 }
-                uex e(gs.symsAssociation.get(), len);
+                uex e(gs.sym_sAssociation.get(), len);
                 for (k = 1; k <= len; k++)
                 {
                     e.push_back(estack[m+2*k-1].copy());
@@ -1026,7 +1026,7 @@ std::cout << "estack:" <<std::endl; print_exstack(estack);
                 }
                 if (m==0 || eis_raw(estack[m-1].get())) {error = erBad; return;}
 
-                uex e(gs.symsPart.get(), len+1);
+                uex e(gs.sym_sPart.get(), len+1);
                 for (k=0; k<=len; k++) {
                     e.push_back(estack[m+2*k-1].copy());
                 }
@@ -1071,8 +1071,8 @@ ex syntax_report::near_error()
     }
     else
     {
-/*        ex t = emake_node(gs.symsList.copy(), emake_str("we don't know"));
-        return emake_node(gs.symsRowBox.copy(), t);
+/*        ex t = emake_node(gs.sym_sList.copy(), emake_str("we don't know"));
+        return emake_node(gs.sym_sRowBox.copy(), t);
 */
         return around.copy();
     }
@@ -1090,7 +1090,7 @@ void syntax_report::handle_row_error(PError e, er b, size_t i, size_t si)
     }
     if (around.get() == nullptr)
     {
-        around.reset(gs.symsPi.copy());
+        around.reset(gs.sym_sPi.copy());
     }
 }
 
@@ -1106,7 +1106,7 @@ void syntax_report::handle_row_error(PError e, er b, size_t i)
     }
     if (around.get() == nullptr)
     {
-        around.reset(gs.symsPi.copy());
+        around.reset(gs.sym_sPi.copy());
     }
 }
 
@@ -1123,7 +1123,7 @@ void syntax_report::handle_row_end_error(er b)
     }
     if (around.get() == nullptr)
     {
-        around.reset(gs.symsPi.copy());
+        around.reset(gs.sym_sPi.copy());
     }
 }
 
@@ -1139,7 +1139,7 @@ void syntax_report::handle_string_error(PError e, er b, size_t si)
     }
     if (around.get() == nullptr)
     {
-        around.reset(gs.symsPi.copy());
+        around.reset(gs.sym_sPi.copy());
     }
 }
 
@@ -1155,6 +1155,6 @@ void syntax_report::handle_cstr_error(PError e, const char * b, size_t si)
     }
     if (around.get() == nullptr)
     {
-        around.reset(gs.symsPi.copy());
+        around.reset(gs.sym_sPi.copy());
     }
 }

@@ -89,6 +89,7 @@ enum cellType {
 
 enum moveRet {
     moveret_OK,
+    moveret_Replace,
     moveret_End
 };
 enum moveArg {
@@ -101,7 +102,8 @@ enum moveArg {
     movearg_Up,
     movearg_Down,
     movearg_ShiftUp,
-    movearg_ShiftDown
+    movearg_ShiftDown,
+    movearg_Switch
 };
 
 enum insertRet {
@@ -195,13 +197,13 @@ public:
     int32_t get_type() {return type;};
     void set_type(int32_t type_) {type = type_;};
     virtual void print(size_t indent, int32_t offx, int32_t offy) {assert(false);};
-    virtual void insert_char(char16_t c) {assert(false);};
+    virtual void insert_char(int32_t c) {assert(false);};
     virtual void measure(boxmeasurearg ma) {assert(false);};
     virtual void draw_pre(boxdrawarg da) {assert(false);};
     virtual void draw_main(boxdrawarg da) {assert(false);};
     virtual void draw_post(boxdrawarg da) {assert(false);};
-    virtual moveRet move(moveArg m) {assert(false);};
-    virtual insertRet insert(insertArg m) {assert(false);};
+    virtual moveRet move(boxbase*&b, moveArg m) {assert(false);};
+    virtual insertRet insert(boxbase*&b, insertArg m) {assert(false);};
     virtual removeRet remove(boxbase*&b, removeArg m) {assert(false);};
     virtual ex get_ex() {assert(false);};
     virtual void set_scolor(bsymer* B) {assert(false);};
@@ -212,14 +214,14 @@ public:
 
     nullbox() : boxbase(BNTYPE_NULLER, 2, 2, 1) {};
     void print(size_t indent, int32_t offx, int32_t offy);
-    void insert_char(char16_t c);
+    void insert_char(int32_t c);
     void measure(boxmeasurearg ma);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -229,14 +231,14 @@ public:
 
     charbox(int32_t type_, int32_t sizex_, int32_t sizey_, int32_t centery_) : boxbase(type_, sizex_, sizey_, centery_) {assert(type_ > 0);};
     void print(size_t indent, int32_t offx, int32_t offy);
-    void insert_char(char16_t c);
+    void insert_char(int32_t c);
     void measure(boxmeasurearg ma);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    moveRet move(moveArg m);    
-    insertRet insert(insertArg m);
+    moveRet move(boxbase*&b, moveArg m);    
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -415,9 +417,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -466,9 +468,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -508,9 +510,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -530,9 +532,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -551,9 +553,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -574,9 +576,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -606,9 +608,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -627,10 +629,33 @@ public:
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
-    void insert_char(char16_t c);
+    void insert_char(int32_t c);
     void set_scolor(bsymer* B);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
+    removeRet remove(boxbase*&b, removeArg m);
+    ex get_ex();
+};
+
+class rotationbox : public boxbase {
+public:
+    rowboxarrayelem inside;
+    uint32_t angle, original_angle;
+//    uint32_t fs;
+
+    rotationbox(rowbox * inside_, uint32_t angle_, uint32_t original_angle_) : boxbase(BNTYPE_ROT), inside(inside_), angle(angle_), original_angle(original_angle_) {};
+    ~rotationbox() {
+        delete inside.cbox;
+    }
+    void print(size_t indent, int32_t offx, int32_t offy);
+    void measure(boxmeasurearg ma);
+    void draw_pre(boxdrawarg ma);
+    void draw_main(boxdrawarg ma);
+    void draw_post(boxdrawarg ma);
+    void insert_char(int32_t c);
+    void set_scolor(bsymer* B);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -659,9 +684,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -690,9 +715,9 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
@@ -723,14 +748,46 @@ public:
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
 
+class gridbox : public boxbase {
+public:
+    size_t row_cursor, col_cursor;
+    size_t row_cursor2, col_cursor2;
+    std::vector<std::vector<rowboxarrayelem>> array;
 
+    gridbox(size_t nrows, size_t ncols, size_t row_cursor_, size_t col_cursor_)
+     : boxbase(BNTYPE_GRID),
+       row_cursor(row_cursor_), col_cursor(col_cursor_),
+       row_cursor2(row_cursor_), col_cursor2(col_cursor_),
+       array(nrows, std::vector<rowboxarrayelem>(ncols, rowboxarrayelem(nullptr)))
+    {
+    }
+
+    ~gridbox()
+    {
+        for (auto i = array.begin(); i != array.end(); ++i)
+            for (auto j = i->begin(); j != i->end(); ++j)
+                delete j->cbox;
+    }
+
+    void print(size_t indent, int32_t offx, int32_t offy);
+    void measure(boxmeasurearg ma);
+    void draw_pre(boxdrawarg ma);
+    void draw_main(boxdrawarg ma);
+    void draw_post(boxdrawarg ma);
+    void set_scolor(bsymer* B);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
+    removeRet remove(boxbase*&b, removeArg m);
+    ex get_ex();
+};
 
 
 class graphics3dbox : public boxbase {
@@ -801,9 +858,9 @@ int64_t fxn_evals, grad_evals;
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
     void set_scolor(bsymer* B);
-    void insert_char(char16_t c);
-    moveRet move(moveArg m);
-    insertRet insert(insertArg m);
+    void insert_char(int32_t c);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };

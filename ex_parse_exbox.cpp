@@ -11,7 +11,7 @@
 
 static void _push_end(std::vector<size_t>&istack, ex b)
 {
-    if (ehas_head_sym(b, gs.symsRowBox.get()))
+    if (ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         istack.push_back(elength(b) - 1);
     }
@@ -23,7 +23,7 @@ static void _push_end(std::vector<size_t>&istack, ex b)
 
 static void _pop_end(std::vector<size_t>&istack, ex b)
 {
-    if (ehas_head_sym(b, gs.symsRowBox.get()))
+    if (ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         istack.pop_back();
     }
@@ -72,11 +72,11 @@ int bnode_sumprod_argc(er b, Operator &op)
 //std::cout << "bnode_sumprod_argc " << ex_tostring_full(b) << std::endl;
     int r = 0;
     op = op_none;
-    if (ehas_head_sym_length(b, gs.symsUnderoverscriptBox.get(), 3))
+    if (ehas_head_sym_length(b, gs.sym_sUnderoverscriptBox.get(), 3))
     {
         r = 2;
     }
-    else if (ehas_head_sym_length(b, gs.symsUnderscriptBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sUnderscriptBox.get(), 2))
     {
         r = 1;
     }
@@ -87,12 +87,12 @@ int bnode_sumprod_argc(er b, Operator &op)
     er f = echild(b, 1);
     if (!eis_str(f))
     {
-        if (!ehas_head_sym(f, gs.symsRowBox.get()) || elength(f) == 0)
+        if (!ehas_head_sym(f, gs.sym_sRowBox.get()) || elength(f) == 0)
         {
             return 0;
         }
         f = echild(f, 1);
-        if (!ehas_head_sym_length(f, gs.symsList.get(), 1))
+        if (!ehas_head_sym_length(f, gs.sym_sList.get(), 1))
         {
             return 0;
         }
@@ -135,9 +135,9 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
         return;
     }
 
-    if (   !ehas_head_sym(b, gs.symsRowBox.get())
+    if (   !ehas_head_sym(b, gs.sym_sRowBox.get())
         || elength(b) == 0
-        || !ehas_head_sym(echild(b,1), gs.symsList.get()))
+        || !ehas_head_sym(echild(b,1), gs.sym_sList.get()))
     {
         error = erBad; return;
     }
@@ -161,7 +161,7 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
 //std::cout << "got character: " << c << std::endl;
                 if (c == CHAR_Integral && si >= sn
                                        && i + 1 <= elength(b)
-                                       && ehas_head_sym_length(echild(b,i+1), gs.symsSubsuperscriptBox.get(), 2))
+                                       && ehas_head_sym_length(echild(b,i+1), gs.sym_sSubsuperscriptBox.get(), 2))
                 {
                     P.handle_char(-1);
                     if (P.error) {error = P.error; return;}
@@ -174,10 +174,10 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
                     uex e2(exbox_to_ex(echild(b,i,2), error, iistack));
                     if (error) {return;}
 //                        istack.pop_back();
-                    P.handle_token_ex(emake_raw(op_pre_Integrate, 0, emake_node(ecopy(gs.symsIntegrate.get()),
-                                                                                ecopy(gs.symsNull.get()),
-                                                                                emake_node(ecopy(gs.symsList.get()),
-                                                                                           ecopy(gs.symsNull.get()),
+                    P.handle_token_ex(emake_raw(op_pre_Integrate, 0, emake_node(ecopy(gs.sym_sIntegrate.get()),
+                                                                                ecopy(gs.sym_sNull.get()),
+                                                                                emake_node(ecopy(gs.sym_sList.get()),
+                                                                                           ecopy(gs.sym_sNull.get()),
                                                                                            e1.release(),
                                                                                            e2.release()
                                                                                 )
@@ -190,12 +190,12 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
                 if (P.error) {error = P.error; return;}
             }
         }
-        else if (child == gs.symsNull.get())
+        else if (child == gs.sym_sNull.get())
         {
             P.handle_newline();
             if (P.error) {error = P.error; return;}
         }
-        else if (ehas_head_sym_length(child, gs.symsSuperscriptBox.get(), 1))
+        else if (ehas_head_sym_length(child, gs.sym_sSuperscriptBox.get(), 1))
         {
             P.handle_post_oper(op_post_SuperscriptBox);
             if (!P.have_top_ex()) {error = 1; return;}
@@ -207,9 +207,9 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
             // make the power
             uex e(ecopy(P.estack.back().get()));
             P.estack.pop_back();
-            P.estack.push_back(wex(emake_node(gs.symsPower.copy(), e.release(), f.release())));
+            P.estack.push_back(wex(emake_node(gs.sym_sPower.copy(), e.release(), f.release())));
         }
-        else if (ehas_head_sym_length(child, gs.symsSubscriptBox.get(), 1))
+        else if (ehas_head_sym_length(child, gs.sym_sSubscriptBox.get(), 1))
         {
             P.handle_post_oper(op_post_SubscriptBox);
             if (!P.have_top_ex()) {error = 1; return;}
@@ -225,7 +225,7 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
 //            istack.pop_back();
             // make the subscript
             size_t len = (Q.estack.size()+3)/2;
-            uex e(gs.symsSubscript.get(), len);
+            uex e(gs.sym_sSubscript.get(), len);
             e.push_back(P.estack.back().copy());
             for (size_t k=2; k<=len; k++)
             {
@@ -235,10 +235,8 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
             Q.estack.clear();
             P.estack.push_back(wex(e.release()));
         }
-        else if (ehas_head_sym_length(child, gs.symsSubsuperscriptBox.get(), 2))
+        else if (ehas_head_sym_length(child, gs.sym_sSubsuperscriptBox.get(), 2))
         {
-//std::cout << "" << std::endl;
-
             P.handle_post_oper(op_post_SubsuperscriptBox);
             if (!P.have_top_ex()) {error = 1; return;}
             // parse the subscript
@@ -253,7 +251,7 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
 //            istack.pop_back();
             // make the subscript
             size_t len = (Q.estack.size()+3)/2;
-            uex e(gs.symsSubscript.get(), len);
+            uex e(gs.sym_sSubscript.get(), len);
             e.push_back(P.estack.back().copy());
             for (size_t k=2; k<=len; k++) {
                 e.push_back(Q.estack[2*k-4].copy());
@@ -266,7 +264,7 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
             if (error) {return;}
 //            istack.pop_back();
             // make the superscript
-            P.estack.push_back(wex(emake_node(gs.symsPower.copy(), e.release(), f.release())));
+            P.estack.push_back(wex(emake_node(gs.sym_sPower.copy(), e.release(), f.release())));
         }
         else if (bnode_sumprod_argc(child, op) == 2)
         {
@@ -282,13 +280,13 @@ void _exbox_to_ex_handle_row(eparser &P, er b, int &error, std::vector<size_t> &
             P.handle_char(-1);
             if (P.error) {error = P.error; return;}
             ex l;
-            if (ehas_head_sym_length(e1.get(), gs.symsSet.get(), 2))
+            if (ehas_head_sym_length(e1.get(), gs.sym_sSet.get(), 2))
             {
-                l = emake_node(ecopy(gs.symsList.get()), ecopychild(e1.get(),1), ecopychild(e1.get(),2), e2.release());
+                l = emake_node(ecopy(gs.sym_sList.get()), ecopychild(e1.get(),1), ecopychild(e1.get(),2), e2.release());
             } else {
-                l = emake_node(ecopy(gs.symsList.get()), e1.release(), e2.release());
+                l = emake_node(ecopy(gs.sym_sList.get()), e1.release(), e2.release());
             }
-            P.handle_token_ex(emake_raw(op,0,emake_node(ecopy(op == op_pre_Sum ? gs.symsSum.get() : gs.symsProduct.get()), l)));
+            P.handle_token_ex(emake_raw(op,0,emake_node(ecopy(op == op_pre_Sum ? gs.sym_sSum.get() : gs.sym_sProduct.get()), l)));
             if (P.error) {error = P.error; return;}
         }
         else
@@ -306,32 +304,32 @@ ex exbox_to_ex(er b, int &error, std::vector<size_t> &istack)
 {
 //std::cout << "exbox_to_ex " << ex_tostring_full(b) << std::endl;
 
-    if (eis_str(b) || ehas_head_sym(b, gs.symsRowBox.get()))
+    if (eis_str(b) || ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         eparser P;
         _exbox_to_ex_handle_row(P, b, error, istack);
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        _push_end(istack, b);
         P.handle_end();
-        if (!P.have_one_ex()) {error = 1; return ecopy(gs.syms$Failed.get());}
+        if (!P.have_one_ex()) {error = 1; return ecopy(gs.sym_s$Failed.get());}
 //        _pop_end(istack, b);
         return ecopy(P.estack[0].get());
     }
-    else if (ehas_head_sym_length(b, gs.symsSqrtBox.get(), 1))
+    else if (ehas_head_sym_length(b, gs.sym_sSqrtBox.get(), 1))
     {
 //        istack.push_back(0);
         uex e(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
-        return emake_node(ecopy(gs.symsSqrt.get()), e.release());
+        return emake_node(ecopy(gs.sym_sSqrt.get()), e.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsRotationBox.get(), 4))
+    else if (ehas_head_sym_length(b, gs.sym_sRotationBox.get(), 4))
     {
-        if (!eis_int(echild(b,3)) || !eis_int(echild(b,4))) {error = erBad; return ecopy(gs.syms$Failed.get());}
+        if (!eis_int(echild(b,3)) || !eis_int(echild(b,4))) {error = erBad; return ecopy(gs.sym_s$Failed.get());}
 
 //        istack.push_back(0);
         uex e(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
 
         uex r(emake_rat());
@@ -340,41 +338,41 @@ ex exbox_to_ex(er b, int &error, std::vector<size_t> &istack)
         fmpz_sub(fmpq_numref(erat_data(r.get())), eint_data(echild(b,4)), eint_data(echild(b,3)));
         fmpq_canonicalise(erat_data(r.get()));
         ex f = ereturn_rat(r.release());
-        f = emake_node(ecopy(gs.symsTimes.get()), f, ecopy(gs.symsPi.get()));
-        f = emake_node(ecopy(gs.symsPlus.get()), ecopy(echild(b,2)), f);
-        return emake_node(ecopy(gs.symsRotate.get()), e.release(), f);
+        f = emake_node(ecopy(gs.sym_sTimes.get()), f, ecopy(gs.sym_sPi.get()));
+        f = emake_node(ecopy(gs.sym_sPlus.get()), ecopy(echild(b,2)), f);
+        return emake_node(ecopy(gs.sym_sRotate.get()), e.release(), f);
     }
-    else if (ehas_head_sym_length(b, gs.symsFractionBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sFractionBox.get(), 2))
     {
 //        istack.push_back(0);
         uex e1(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.back() = 1;
         uex e2(exbox_to_ex(echild(b,2), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
-        return emake_node(ecopy(gs.symsDivide.get()), e1.release(), e2.release());
+        return emake_node(ecopy(gs.sym_sDivide.get()), e1.release(), e2.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsUnderscriptBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sUnderscriptBox.get(), 2))
     {
         // parse the body
 //        istack.push_back(0);
         uex f(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
         // parse the underscript
 //        istack.push_back(1);
         eparser Q;
         _exbox_to_ex_handle_row(Q, echild(b,2), error, istack);
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        _push_end(istack, bnode_child(b,1));
         Q.handle_end();
-        if (!Q.have_comma_sequence()) {error = 1; return ecopy(gs.syms$Failed.get());}
+        if (!Q.have_comma_sequence()) {error = 1; return ecopy(gs.sym_s$Failed.get());}
 //        _pop_end(istack, bnode_child(b,1));
 //        istack.pop_back();
         // make the underscript
         size_t len = (Q.estack.size()+3)/2;
-        uex e(gs.symsUnderscript.get(), len);
+        uex e(gs.sym_sUnderscript.get(), len);
         e.push_back(f.release());
         for (size_t k=2; k<=len; k++)
         {
@@ -382,50 +380,50 @@ ex exbox_to_ex(er b, int &error, std::vector<size_t> &istack)
         }
         return e.release();
     }
-    else if (ehas_head_sym_length(b, gs.symsOverscriptBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sOverscriptBox.get(), 2))
     {
         // parse the body
 //        istack.push_back(0);
         uex f(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
         // parse the overscript
 //        istack.push_back(1);
         eparser Q;
         _exbox_to_ex_handle_row(Q, echild(b,2), error, istack);
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        _push_end(istack, bnode_child(b,1));
         Q.handle_end();
-        if (!Q.have_comma_sequence()) {error = 1; return ecopy(gs.syms$Failed.get());}
+        if (!Q.have_comma_sequence()) {error = 1; return ecopy(gs.sym_s$Failed.get());}
 //        _pop_end(istack, bnode_child(b,1));
 //        istack.pop_back();
         // make the underscript
         size_t len = (Q.estack.size()+3)/2;
-        uex e(gs.symsOverscript.get(), len);
+        uex e(gs.sym_sOverscript.get(), len);
         e.push_back(f.release());
         for (size_t k=2; k<=len; k++) {
             e.push_back(Q.estack[2*k-4].copy());
         }
         return e.release();
     }
-    else if (ehas_head_sym_length(b, gs.symsUnderoverscriptBox.get(), 3))
+    else if (ehas_head_sym_length(b, gs.sym_sUnderoverscriptBox.get(), 3))
     {
 //        istack.push_back(0);
         uex e0(exbox_to_ex(echild(b,1), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.back() = 1;
         uex e1(exbox_to_ex(echild(b,2), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.back() = 2;
         uex e2(exbox_to_ex(echild(b,3), error, istack));
-        if (error) {return ecopy(gs.syms$Failed.get());}
+        if (error) {return ecopy(gs.sym_s$Failed.get());}
 //        istack.pop_back();
-        return emake_node(ecopy(gs.symsUnderoverscript.get()), e0.release(), e1.release(), e2.release());
+        return emake_node(ecopy(gs.sym_sUnderoverscript.get()), e0.release(), e1.release(), e2.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsGridBox.get(), 1))
+    else if (ehas_head_sym_length(b, gs.sym_sGridBox.get(), 1))
     {
         er m = echild(b,1);
-        if (!eis_matrix(m)) {error = erBad; return gs.syms$Failed.copy();}
+        if (!eis_matrix(m)) {error = erBad; return gs.sym_s$Failed.copy();}
         size_t nrows = elength(m);
         size_t ncols = elength(echild(m,1));
 
@@ -438,33 +436,33 @@ ex exbox_to_ex(er b, int &error, std::vector<size_t> &istack)
             {
 //                istack.back() = bnode_extra0(b)*j+i;
                 uex e(exbox_to_ex(echild(m,j,i), error, istack));
-                if (error) {return ecopy(gs.syms$Failed.get());}
+                if (error) {return ecopy(gs.sym_s$Failed.get());}
                 row.push_back(std::move(e));
             }
-            matrix.push_back(uex(emake_node(ecopy(gs.symsList.get()), row)));
+            matrix.push_back(uex(emake_node(ecopy(gs.sym_sList.get()), row)));
         }
 //        istack.pop_back();
-        return emake_node(ecopy(gs.symsList.get()), matrix);
+        return emake_node(ecopy(gs.sym_sList.get()), matrix);
     }
-    else if (ehas_head_sym_length(b, gs.symsColumnBox.get(), 1))
+    else if (ehas_head_sym_length(b, gs.sym_sColumnBox.get(), 1))
     {
         b = echild(b,1);
-        if (!ehas_head_sym(b, gs.symsList.get()) || elength(b) == 0) {error = erBad; return ecopy(gs.syms$Failed.get());}
+        if (!ehas_head_sym(b, gs.sym_sList.get()) || elength(b) == 0) {error = erBad; return ecopy(gs.sym_s$Failed.get());}
         std::vector<uex> list;
 //        istack.push_back(0);
         for (size_t j = 1; j <= elength(b); j++)
         {
 //            istack.back() = j;
             uex e(exbox_to_ex(echild(b,j), error, istack));
-            if (error) {return ecopy(gs.syms$Failed.get());}
+            if (error) {return ecopy(gs.sym_s$Failed.get());}
             list.push_back(std::move(e));
         }
 //        istack.pop_back();
-        return emake_node(ecopy(gs.symsColumn.get()), emake_node(ecopy(gs.symsList.get()), list));
+        return emake_node(ecopy(gs.sym_sColumn.get()), emake_node(ecopy(gs.sym_sList.get()), list));
     }
     else
     {
-        error = erBad; return ecopy(gs.syms$Failed.get());
+        error = erBad; return ecopy(gs.sym_s$Failed.get());
     }
 }
 
@@ -473,7 +471,7 @@ void ex_parse_exbox(std::vector<uex> &ans, er b, bool toplevel, int &error, std:
 //std::cout << "ex_parse_exbox " << ex_tostring_full(b) << std::endl;
 
     ans.clear();
-    if (eis_str(b) || ehas_head_sym(b, gs.symsRowBox.get()))
+    if (eis_str(b) || ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         eparser P;
         P.toplevel = toplevel;
@@ -541,9 +539,9 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
         return;
     }
 
-    if (   !ehas_head_sym(b, gs.symsRowBox.get())
+    if (   !ehas_head_sym(b, gs.sym_sRowBox.get())
         || elength(b) == 0
-        || !ehas_head_sym(echild(b,1), gs.symsList.get()))
+        || !ehas_head_sym(echild(b,1), gs.sym_sList.get()))
     {
         sr.error = erBad;
         sr.around.reset(nullptr);
@@ -566,7 +564,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                 si += readonechar16(c, s + si);
                 if (c == CHAR_Integral && si >= sn
                                        && i + 1 <= elength(b)
-                                       && ehas_head_sym_length(echild(b,i+1), gs.symsSubsuperscriptBox.get(), 2))
+                                       && ehas_head_sym_length(echild(b,i+1), gs.sym_sSubsuperscriptBox.get(), 2))
                 {
                     P.handle_char(CHAR_NONE);
                     if (P.error)
@@ -587,8 +585,8 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                         sr.handle_row_error(erNone, b, i);
                         return;
                     }
-                    ex t = emake_node(gs.symsList.copy(), gs.symsNull.copy(), e1.release(), e2.release());
-                    t = emake_node(gs.symsIntegrate.copy(), gs.symsNull.copy(), t);
+                    ex t = emake_node(gs.sym_sList.copy(), gs.sym_sNull.copy(), e1.release(), e2.release());
+                    t = emake_node(gs.sym_sIntegrate.copy(), gs.sym_sNull.copy(), t);
                     P.handle_token_ex(emake_raw(op_pre_Integrate, 0, t));
                 }
                 else
@@ -602,7 +600,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                 }
             }
         }
-        else if (child == gs.symsNull.get())
+        else if (child == gs.sym_sNull.get())
         {
             P.handle_newline();
             if (P.error)
@@ -611,7 +609,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                 return;
             }
         }
-        else if (ehas_head_sym_length(child, gs.symsSuperscriptBox.get(), 1))
+        else if (ehas_head_sym_length(child, gs.sym_sSuperscriptBox.get(), 1))
         {
             P.handle_post_oper(op_post_SuperscriptBox);
             if (!P.have_top_ex())
@@ -629,9 +627,9 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
             // make the power
             uex e(P.estack.back().copy());
             P.estack.pop_back();
-            P.estack.push_back(wex(emake_node(gs.symsPower.copy(), e.release(), f.release())));
+            P.estack.push_back(wex(emake_node(gs.sym_sPower.copy(), e.release(), f.release())));
         }
-        else if (ehas_head_sym_length(child, gs.symsSubscriptBox.get(), 1))
+        else if (ehas_head_sym_length(child, gs.sym_sSubscriptBox.get(), 1))
         {
             P.handle_post_oper(op_post_SubscriptBox);
             if (!P.have_top_ex())
@@ -655,7 +653,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
             }
             // make the subscript
             size_t len = (Q.estack.size()+3)/2;
-            uex e(gs.symsSubscript.get(), len);
+            uex e(gs.sym_sSubscript.get(), len);
             e.push_back(P.estack.back().copy());
             for (size_t k=2; k<=len; k++)
             {
@@ -665,7 +663,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
             Q.estack.clear();
             P.estack.push_back(wex(e.release()));
         }
-        else if (ehas_head_sym_length(child, gs.symsSubsuperscriptBox.get(), 2))
+        else if (ehas_head_sym_length(child, gs.sym_sSubsuperscriptBox.get(), 2))
         {
 //std::cout << "" << std::endl;
 
@@ -691,7 +689,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
             }
             // make the subscript
             size_t len = (Q.estack.size()+3)/2;
-            uex e(gs.symsSubscript.get(), len);
+            uex e(gs.sym_sSubscript.get(), len);
             e.push_back(P.estack.back().copy());
             for (size_t k=2; k<=len; k++) {
                 e.push_back(Q.estack[2*k-4].copy());
@@ -706,7 +704,7 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                 return;
             }
             // make the superscript
-            P.estack.push_back(wex(emake_node(gs.symsPower.copy(), e.release(), f.release())));
+            P.estack.push_back(wex(emake_node(gs.sym_sPower.copy(), e.release(), f.release())));
         }
         else if (bnode_sumprod_argc(child, op) == 2)
         {
@@ -729,13 +727,13 @@ void _exbox_to_ex_handle_rows(eparser &P, er b, syntax_report & sr)
                 return;
             }
             ex l;
-            if (ehas_head_sym_length(e1.get(), gs.symsSet.get(), 2))
+            if (ehas_head_sym_length(e1.get(), gs.sym_sSet.get(), 2))
             {
-                l = emake_node(gs.symsList.copy(), ecopychild(e1.get(),1), ecopychild(e1.get(),2), e2.release());
+                l = emake_node(gs.sym_sList.copy(), ecopychild(e1.get(),1), ecopychild(e1.get(),2), e2.release());
             } else {
-                l = emake_node(gs.symsList.copy(), e1.release(), e2.release());
+                l = emake_node(gs.sym_sList.copy(), e1.release(), e2.release());
             }
-            l = emake_node(ecopy(op == op_pre_Sum ? gs.symsSum.get() : gs.symsProduct.get()), l);
+            l = emake_node(ecopy(op == op_pre_Sum ? gs.sym_sSum.get() : gs.sym_sProduct.get()), l);
             P.handle_token_ex(emake_raw(op,0,l));
             if (P.error)
             {
@@ -765,70 +763,70 @@ ex exbox_to_exs(er b, syntax_report & sr)
 {
 //std::cout << "exbox_to_ex " << ex_tostring_full(b) << std::endl;
 
-    if (eis_str(b) || ehas_head_sym(b, gs.symsRowBox.get()))
+    if (eis_str(b) || ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         eparser P;
         _exbox_to_ex_handle_rows(P, b, sr);
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         P.handle_end();
         if (!P.have_one_ex())
         {
             sr.handle_row_end_error(b);
-            return gs.syms$Failed.copy();
+            return gs.sym_s$Failed.copy();
         }
         return P.estack[0].copy();
     }
-    else if (ehas_head_sym_length(b, gs.symsSqrtBox.get(), 1))
+    else if (ehas_head_sym_length(b, gs.sym_sSqrtBox.get(), 1))
     {
         uex e(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
-        return emake_node(gs.symsSqrt.copy(), e.release());
+        if (sr.error) {return gs.sym_s$Failed.copy();}
+        return emake_node(gs.sym_sSqrt.copy(), e.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsRotationBox.get(), 4))
+    else if (ehas_head_sym_length(b, gs.sym_sRotationBox.get(), 4))
     {
         if (!eis_int(echild(b,3)) || !eis_int(echild(b,4)))
         {
             sr.error = erBad;
-            return gs.syms$Failed.copy();
+            return gs.sym_s$Failed.copy();
         }
         uex e(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         uex r(emake_rat());
         fmpz_one(fmpq_denref(erat_data(r.get())));
         fmpz_mul_2exp(fmpq_denref(erat_data(r.get())), fmpq_denref(erat_data(r.get())), 31);
         fmpz_sub(fmpq_numref(erat_data(r.get())), eint_data(echild(b,4)), eint_data(echild(b,3)));
         fmpq_canonicalise(erat_data(r.get()));
         ex f = ereturn_rat(r.release());
-        f = emake_node(gs.symsTimes.copy(), f, gs.symsPi.copy());
-        f = emake_node(gs.symsPlus.copy(), ecopychild(b,2), f);
-        return emake_node(gs.symsRotate.copy(), e.release(), f);
+        f = emake_node(gs.sym_sTimes.copy(), f, gs.sym_sPi.copy());
+        f = emake_node(gs.sym_sPlus.copy(), ecopychild(b,2), f);
+        return emake_node(gs.sym_sRotate.copy(), e.release(), f);
     }
-    else if (ehas_head_sym_length(b, gs.symsFractionBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sFractionBox.get(), 2))
     {
         uex e1(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         uex e2(exbox_to_exs(echild(b,2), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
-        return emake_node(gs.symsDivide.copy(), e1.release(), e2.release());
+        if (sr.error) {return gs.sym_s$Failed.copy();}
+        return emake_node(gs.sym_sDivide.copy(), e1.release(), e2.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsUnderscriptBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sUnderscriptBox.get(), 2))
     {
         // parse the body
         uex f(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         // parse the underscript
         eparser Q;
         _exbox_to_ex_handle_rows(Q, echild(b,2), sr);
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         Q.handle_end();
         if (!Q.have_comma_sequence())
         {
             sr.error = erBad;
-            return gs.syms$Failed.copy();
+            return gs.sym_s$Failed.copy();
         }
         // make the underscript
         size_t len = (Q.estack.size()+3)/2;
-        uex e(gs.symsUnderscript.get(), len);
+        uex e(gs.sym_sUnderscript.get(), len);
         e.push_back(f.release());
         for (size_t k=2; k<=len; k++)
         {
@@ -836,47 +834,47 @@ ex exbox_to_exs(er b, syntax_report & sr)
         }
         return e.release();
     }
-    else if (ehas_head_sym_length(b, gs.symsOverscriptBox.get(), 2))
+    else if (ehas_head_sym_length(b, gs.sym_sOverscriptBox.get(), 2))
     {
         // parse the body
         uex f(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         // parse the overscript
         eparser Q;
         _exbox_to_ex_handle_rows(Q, echild(b,2), sr);
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         Q.handle_end();
         if (!Q.have_comma_sequence())
         {
             sr.error = erBad;
-            return gs.syms$Failed.copy();
+            return gs.sym_s$Failed.copy();
         }
         // make the underscript
         size_t len = (Q.estack.size()+3)/2;
-        uex e(gs.symsOverscript.get(), len);
+        uex e(gs.sym_sOverscript.get(), len);
         e.push_back(f.release());
         for (size_t k=2; k<=len; k++) {
             e.push_back(Q.estack[2*k-4].copy());
         }
         return e.release();
     }
-    else if (ehas_head_sym_length(b, gs.symsUnderoverscriptBox.get(), 3))
+    else if (ehas_head_sym_length(b, gs.sym_sUnderoverscriptBox.get(), 3))
     {
         uex e0(exbox_to_exs(echild(b,1), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         uex e1(exbox_to_exs(echild(b,2), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
+        if (sr.error) {return gs.sym_s$Failed.copy();}
         uex e2(exbox_to_exs(echild(b,3), sr));
-        if (sr.error) {return gs.syms$Failed.copy();}
-        return emake_node(gs.symsUnderoverscript.copy(), e0.release(), e1.release(), e2.release());
+        if (sr.error) {return gs.sym_s$Failed.copy();}
+        return emake_node(gs.sym_sUnderoverscript.copy(), e0.release(), e1.release(), e2.release());
     }
-    else if (ehas_head_sym_length(b, gs.symsGridBox.get(), 1))
+    else if (ehas_head_sym_length(b, gs.sym_sGridBox.get(), 1))
     {
         er m = echild(b,1);
         if (!eis_matrix(m))
         {
             sr.error = erBad;
-            return gs.syms$Failed.copy();
+            return gs.sym_s$Failed.copy();
         }
         size_t nrows = elength(m);
         size_t ncols = elength(echild(m,1));
@@ -887,17 +885,17 @@ ex exbox_to_exs(er b, syntax_report & sr)
             for (size_t i = 1; i <= ncols; i++)
             {
                 uex e(exbox_to_exs(echild(m,j,i), sr));
-                if (sr.error) {return gs.syms$Failed.copy();}
+                if (sr.error) {return gs.sym_s$Failed.copy();}
                 row.push_back(std::move(e));
             }
-            matrix.push_back(uex(emake_node(gs.symsList.copy(), row)));
+            matrix.push_back(uex(emake_node(gs.sym_sList.copy(), row)));
         }
-        return emake_node(gs.symsList.copy(), matrix);
+        return emake_node(gs.sym_sList.copy(), matrix);
     }
     else
     {
         sr.error = erBad;
-        return gs.syms$Failed.copy();
+        return gs.sym_s$Failed.copy();
     }
 }
 
@@ -905,14 +903,14 @@ void ex_parse_exboxs(std::vector<uex> &ans, er b, bool toplevel, syntax_report &
 {
 //std::cout << "ex_parse_exbox " << ex_tostring_full(b) << std::endl;
     ans.clear();
-    if (eis_str(b) || ehas_head_sym(b, gs.symsRowBox.get()))
+    if (eis_str(b) || ehas_head_sym(b, gs.sym_sRowBox.get()))
     {
         install_live_psymbols LPS;
         eparser P(toplevel);
         _exbox_to_ex_handle_rows(P, b, sr);
         if (sr.error)
         {
-            sr.around.reset(gs.symsPi.copy());
+            sr.around.reset(gs.sym_sPi.copy());
             return;
         }
         P.handle_end();
@@ -935,7 +933,7 @@ void ex_parse_exboxs(std::vector<uex> &ans, er b, bool toplevel, syntax_report &
             }
             else
             {
-                sr.around.reset(gs.symsPi.copy());
+                sr.around.reset(gs.sym_sPi.copy());
             }
             return;
         }
@@ -943,7 +941,7 @@ void ex_parse_exboxs(std::vector<uex> &ans, er b, bool toplevel, syntax_report &
     else
     {
         sr.error = erBad;
-        sr.around.reset(gs.symsPi.copy());
+        sr.around.reset(gs.sym_sPi.copy());
         return;
     }
 }

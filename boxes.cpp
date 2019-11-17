@@ -227,11 +227,22 @@ void fractionbox::print(size_t indent, int32_t offx, int32_t offy)
 
 void sqrtbox::print(size_t indent, int32_t offx, int32_t offy)
 {
-//std::cout << "fractionbox::print " << indent << std::endl;
+//std::cout << "sqrtbox::print " << indent << std::endl;
 
     for (size_t i = 0; i < indent; i++)
         printf("    ");
     printf("(%d,%d) sqrt: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
+
+    inside.cbox->print(indent + 1, inside.offx, inside.offy);
+}
+
+void rotationbox::print(size_t indent, int32_t offx, int32_t offy)
+{
+//std::cout << "sqrtbox::print " << indent << std::endl;
+
+    for (size_t i = 0; i < indent; i++)
+        printf("    ");
+    printf("(%d,%d) rotation: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
 
     inside.cbox->print(indent + 1, inside.offx, inside.offy);
 }
@@ -242,7 +253,7 @@ void underscriptbox::print(size_t indent, int32_t offx, int32_t offy)
 
     for (size_t i = 0; i < indent; i++)
         printf("    ");
-    printf("(%d,%d) sqrt: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
+    printf("(%d,%d) underscript: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
 
     body.cbox->print(indent + 1, body.offx, body.offy);
     under.cbox->print(indent + 1, under.offx, under.offy);
@@ -254,7 +265,7 @@ void overscriptbox::print(size_t indent, int32_t offx, int32_t offy)
 
     for (size_t i = 0; i < indent; i++)
         printf("    ");
-    printf("(%d,%d) sqrt: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
+    printf("(%d,%d) overscript: size (%d,%d:%d) cursor(%d)\n", offx, offy, sizex, sizey, sizey, cursor);
 
     body.cbox->print(indent + 1, body.offx, body.offy);
     over.cbox->print(indent + 1, over.offx, over.offy);
@@ -266,27 +277,41 @@ void underoverscriptbox::print(size_t indent, int32_t offx, int32_t offy)
 
     for (size_t i = 0; i < indent; i++)
         printf("    ");
-    printf("(%d,%d) sqrt: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
+    printf("(%d,%d) underoverscript: size (%d,%d:%d)\n", offx, offy, sizex, sizey, sizey);
 
     body.cbox->print(indent + 1, body.offx, body.offy);
     under.cbox->print(indent + 1, under.offx, under.offy);
     over.cbox->print(indent + 1, over.offx, over.offy);
 }
 
+void gridbox::print(size_t indent, int32_t offx, int32_t offy)
+{
+//std::cout << "fractionbox::print " << indent << std::endl;
+
+    for (size_t i = 0; i < indent; i++)
+        printf("    ");
+    printf("(%d,%d) grid: size (%d,%d:%d) cursor (%d,%d)\n", offx, offy, sizex, sizey, sizey, col_cursor, row_cursor);
+
+    for (auto i = array.begin(); i != array.end(); ++i)
+        for (auto j = i->begin(); j != i->end(); ++j)
+            j->cbox->print(indent + 1, j->offx, j->offy);
+}
+
+
 
 /* insert_char ***************************************************************/
 
-void charbox::insert_char(char16_t c)
+void charbox::insert_char(int32_t c)
 {
     assert(false);
 }
 
-void nullbox::insert_char(char16_t c)
+void nullbox::insert_char(int32_t c)
 {
     assert(false);
 }
 
-void graphics3dbox::insert_char(char16_t c)
+void graphics3dbox::insert_char(int32_t c)
 {
     return;
 }
@@ -306,7 +331,7 @@ void rootbox::delete_selection()
 }
 
 
-void rootbox::insert_char(char16_t c)
+void rootbox::insert_char(int32_t c)
 {
 //std::cout << "rootbox::insert_char " << c << std::endl;
     if (cursor_b > childcells.size())
@@ -345,7 +370,7 @@ void rowbox::delete_selection()
     cursor_b = cursor_a = left;
 }
 
-void rowbox::insert_char(char16_t c)
+void rowbox::insert_char(int32_t c)
 {
 //std::cout << "rowbox::insert_char " << c << std::endl;
 
@@ -355,6 +380,31 @@ void rowbox::insert_char(char16_t c)
     {
         assert(cursor_a < child.size());
         ibox_to_ptr(child[cursor_a].cibox)->insert_char(c);
+        return;
+    }
+
+    if (c < 0)
+    {
+        if ((c == -11 || c == -12) && cursor_a != cursor_b)
+        {
+            int32_t left = std::min(cursor_a, cursor_b);
+            int32_t right = std::max(cursor_a, cursor_b);
+            rowbox * newrow = new rowbox(1 + right - left, 0, 0);
+            for (int32_t i = left; i < right; ++i)
+            {
+                newrow->child[i-left].cibox = child[i].cibox;
+                child[i].cibox = iboximm_make(0);
+
+            }
+            newrow->child[right-left].cibox.ptr = new nullbox();
+            uint32_t angle = 1<<24;
+            if (c == -11)
+                angle = -angle;
+            child[left].cibox.ptr = new rotationbox(newrow, angle, angle);
+            child.erase(child.begin() + left + 1, child.begin() + right);
+            cursor_a = left;
+            cursor_b = child.size();
+        }
         return;
     }
 
@@ -455,7 +505,7 @@ alias_scan:
     return;
 }
 
-void cellbox::insert_char(char16_t c)
+void cellbox::insert_char(int32_t c)
 {
 //std::cout << "cellbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -472,7 +522,7 @@ void cellbox::insert_char(char16_t c)
     }
 }
 
-void fractionbox::insert_char(char16_t c)
+void fractionbox::insert_char(int32_t c)
 {
 //std::cout << "subsuperscriptbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -488,28 +538,51 @@ void fractionbox::insert_char(char16_t c)
     }
 }
 
-void sqrtbox::insert_char(char16_t c)
+void sqrtbox::insert_char(int32_t c)
 {
 //std::cout << "sqrtbox::insert_char " << c << std::endl;
     inside.cbox->insert_char(c);
     return;
 }
 
-void subscriptbox::insert_char(char16_t c)
+void rotationbox::insert_char(int32_t c)
+{
+//std::cout << "rotationbox::insert_char " << c << std::endl;
+
+    if (c < 0 && inside.cbox->cursor_b < inside.cbox->child.size())
+    {
+        if (c == -11)
+        {
+            angle -= 1 << 24;
+        }
+        else if (c == -12)
+        {
+            angle += 1 << 24;
+        }
+        return;
+    }
+    else
+    {
+        inside.cbox->insert_char(c);
+        return;
+    }
+}
+
+void subscriptbox::insert_char(int32_t c)
 {
 //std::cout << "subscriptbox::insert_char " << c << std::endl;
     sub.cbox->insert_char(c);
     return;
 }
 
-void superscriptbox::insert_char(char16_t c)
+void superscriptbox::insert_char(int32_t c)
 {
 //std::cout << "superscriptbox::insert_char " << c << std::endl;
     super.cbox->insert_char(c);
     return;
 }
 
-void subsuperscriptbox::insert_char(char16_t c)
+void subsuperscriptbox::insert_char(int32_t c)
 {
 //std::cout << "subsuperscriptbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -525,7 +598,7 @@ void subsuperscriptbox::insert_char(char16_t c)
     }
 }
 
-void underscriptbox::insert_char(char16_t c)
+void underscriptbox::insert_char(int32_t c)
 {
 //std::cout << "underscriptbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -541,7 +614,7 @@ void underscriptbox::insert_char(char16_t c)
     }
 }
 
-void overscriptbox::insert_char(char16_t c)
+void overscriptbox::insert_char(int32_t c)
 {
 //std::cout << "overscriptbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -557,7 +630,7 @@ void overscriptbox::insert_char(char16_t c)
     }
 }
 
-void underoverscriptbox::insert_char(char16_t c)
+void underoverscriptbox::insert_char(int32_t c)
 {
 //std::cout << "underoverscriptbox::insert_char " << c << std::endl;
     switch (cursor)
@@ -576,9 +649,42 @@ void underoverscriptbox::insert_char(char16_t c)
     }
 }
 
+void gridbox::insert_char(int32_t c)
+{
+    array[row_cursor][col_cursor].cbox->insert_char(c);
+}
+
 /* move **********************************************************************/
 
-moveRet charbox::move(moveArg m)
+
+static rowbox * steal_rowbox(rowbox * row, int32_t a, int32_t b)
+{
+    size_t n = row->child.size();
+    rowbox * newrow = new rowbox(n, a, b);
+    for (int32_t i = 0; i < n; i++)
+    {
+        newrow->child[i].cibox = row->child[i].cibox;
+        row->child[i].cibox = iboximm_make(0);
+    }
+    return newrow;
+}
+
+bool made_into_placeholder(rowbox * r)
+{
+    if (r->child.size() == 1)
+    {
+        r->child.insert(r->child.begin(), iboximm_make(CHAR_Placeholder));
+        r->cursor_a = 0;
+        r->cursor_b = 1;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+moveRet charbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -598,7 +704,7 @@ moveRet charbox::move(moveArg m)
     }
 }
 
-moveRet nullbox::move(moveArg m)
+moveRet nullbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -618,7 +724,7 @@ moveRet nullbox::move(moveArg m)
     }
 }
 
-moveRet graphics3dbox::move(moveArg m)
+moveRet graphics3dbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -643,7 +749,7 @@ moveRet graphics3dbox::move(moveArg m)
     }
 }
 
-moveRet rootbox::move(moveArg m)
+moveRet rootbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -653,7 +759,7 @@ moveRet rootbox::move(moveArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                r = childcells[cursor_a].cbox->move(movearg_Left);
+                r = childcells[cursor_a].cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                     cursor_b = cursor_a;
@@ -665,7 +771,7 @@ moveRet rootbox::move(moveArg m)
                 if (cursor_a > 0)
                 {
                     cursor_a--;
-                    r = childcells[cursor_a].cbox->move(movearg_Last);
+                    r = childcells[cursor_a].cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor_b = childcells.size() + 1;
                     return moveret_OK;
@@ -682,7 +788,7 @@ moveRet rootbox::move(moveArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                r = childcells[cursor_a].cbox->move(movearg_ShiftLeft);
+                r = childcells[cursor_a].cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return moveret_OK;
             }
@@ -696,7 +802,7 @@ moveRet rootbox::move(moveArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                r = childcells[cursor_a].cbox->move(movearg_Right);
+                r = childcells[cursor_a].cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
@@ -710,7 +816,7 @@ moveRet rootbox::move(moveArg m)
                 assert(cursor_a <= childcells.size());
                 if (cursor_a < childcells.size())
                 {
-                    r = childcells[cursor_a].cbox->move(movearg_First);
+                    r = childcells[cursor_a].cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor_b = childcells.size() + 1;
                     return moveret_OK;
@@ -727,8 +833,21 @@ moveRet rootbox::move(moveArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                r = childcells[cursor_a].cbox->move(movearg_ShiftRight);
+                r = childcells[cursor_a].cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
+                return moveret_OK;
+            }
+            else
+            {
+                return moveret_OK;
+            }
+        }
+        case movearg_Switch:
+        {
+            if (cursor_b > childcells.size())
+            {
+                assert(cursor_a < childcells.size());
+                r = childcells[cursor_a].cbox->move(b, movearg_Switch);
                 return moveret_OK;
             }
             else
@@ -744,7 +863,7 @@ moveRet rootbox::move(moveArg m)
     }
 }
 
-moveRet cellbox::move(moveArg m)
+moveRet cellbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -753,18 +872,18 @@ moveRet cellbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_Left);
+                r = body.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = label.cbox->move(movearg_Left);
+                r = label.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = body.cbox->move(movearg_Last);
+                    r = body.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -775,14 +894,14 @@ moveRet cellbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftLeft);
+                r = body.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = label.cbox->move(movearg_ShiftLeft);
+                r = label.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -791,12 +910,12 @@ moveRet cellbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_Right);
+                r = body.cbox->move(b, movearg_Right);
             }
             else
             {
                 assert(cursor == 1);
-                r = label.cbox->move(movearg_Right);
+                r = label.cbox->move(b, movearg_Right);
             }
             assert(r == moveret_OK || r == moveret_End);
             return r;
@@ -805,31 +924,45 @@ moveRet cellbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftRight);
+                r = body.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = label.cbox->move(movearg_ShiftRight);
+                r = label.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = body.cbox->move(movearg_Last);
+            r = body.cbox->move(b, movearg_Last);
             cursor = 0;
             assert(r == moveret_OK);
             return r;
         }
         case movearg_First:
         {
-            r = body.cbox->move(movearg_First);
+            r = body.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
+        }
+        case movearg_Switch:
+        {
+            if (cursor == 0)
+            {
+                r = body.cbox->move(b, movearg_Switch);
+                return moveret_OK;
+            }
+            else
+            {
+                assert(cursor == 1);
+                r = label.cbox->move(b, movearg_Switch);
+                return moveret_OK;
+            }
         }
         default:
         {
@@ -839,7 +972,7 @@ moveRet cellbox::move(moveArg m)
     }
 }
 
-moveRet rowbox::move(moveArg m)
+moveRet rowbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -849,7 +982,7 @@ moveRet rowbox::move(moveArg m)
             if (cursor_b >= child.size())
             {
                 assert(cursor_a < child.size());
-                r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_Left);
+                r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                     cursor_b = cursor_a;
@@ -863,7 +996,7 @@ moveRet rowbox::move(moveArg m)
                     cursor_a--;
                     r = moveret_End;
                     if (ibox_is_ptr(child[cursor_a].cibox))
-                        r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_Last);
+                        r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_Last);
                     assert(r == moveret_OK || r == moveret_End);
                     if (r == moveret_End)
                         cursor_b = cursor_a;
@@ -883,7 +1016,7 @@ moveRet rowbox::move(moveArg m)
             if (cursor_b >= child.size())
             {
                 assert(cursor_a < child.size());
-                r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_ShiftLeft);
+                r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                     cursor_b = std::min(cursor_a + 1, int32_t(child.size() - 1));
@@ -908,14 +1041,14 @@ moveRet rowbox::move(moveArg m)
             if (cursor_b >= child.size())
             {
                 assert(cursor_a < child.size());
-                r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_Right);
+                r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_Right);
             }
             else
             {
                 assert(cursor_a < child.size());
                 r = moveret_End;
                 if (ibox_is_ptr(child[cursor_a].cibox))
-                    r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_First);
+                    r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_First);
             }
             assert(r == moveret_OK || r == moveret_End);
             if (r == moveret_End)
@@ -943,7 +1076,7 @@ moveRet rowbox::move(moveArg m)
             if (cursor_b >= child.size())
             {
                 assert(cursor_a < child.size());
-                r = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_ShiftRight);
+                r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_OK)
                     return r;
@@ -973,6 +1106,34 @@ moveRet rowbox::move(moveArg m)
             select_placeholder_if_possible();
             return moveret_OK;
         }
+        case movearg_Switch:
+        {
+            if (cursor_b >= child.size())
+            {
+                assert(cursor_a < child.size());
+                r = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_Switch);
+                if (r == moveret_OK)
+                {
+                    return r;
+                }
+                else if (r == moveret_Replace)
+                {
+                    flags &= ~(BNFLAG_MEASURED | BNFLAG_COLORED);
+                    replacechild(cursor_a, b);
+                    b = nullptr;
+                    return moveret_OK;
+                }
+                else
+                {
+                    assert(false);
+                    return r;
+                }
+            }
+            else
+            {
+                return moveret_OK;
+            }
+        }
         default:
         {
             assert(false);
@@ -981,46 +1142,183 @@ moveRet rowbox::move(moveArg m)
     }
 }
 
-moveRet sqrtbox::move(moveArg m)
+moveRet gridbox::move(boxbase*&b, moveArg m)
+{
+    assert(b == nullptr);
+    moveRet r;
+
+    switch (m)
+    {
+        case movearg_Left:
+        {
+            row_cursor2 = row_cursor;
+            col_cursor2 = col_cursor;
+            r = array[row_cursor][col_cursor].cbox->move(b, m);
+            assert(r == moveret_OK || r == moveret_End);
+            if (r == moveret_End)
+            {
+                if (col_cursor > 0)
+                {
+                    col_cursor2 = col_cursor = col_cursor - 1;
+                    array[row_cursor][col_cursor].cbox->move(b, movearg_Last);
+                    return moveret_OK;
+                }
+                else if (row_cursor > 0)
+                {
+                    row_cursor2 = row_cursor = row_cursor - 1;
+                    col_cursor2 = col_cursor = array[row_cursor].size() - 1;
+                    array[row_cursor][col_cursor].cbox->move(b, movearg_Last);
+                    return moveret_OK;
+                }
+            }
+            return r;
+        }
+        case movearg_ShiftLeft:
+        {
+            if (row_cursor2 == row_cursor && col_cursor2 == col_cursor)
+            {
+                r = array[row_cursor][col_cursor].cbox->move(b, m);
+                assert(r == moveret_OK || r == moveret_End);
+                if (r == moveret_End && col_cursor > 0)
+                {
+                    col_cursor -= 1;
+                    return moveret_OK;
+                }
+                else
+                {
+                    return r;
+                }
+            }
+            else if (col_cursor > 0)
+            {
+                col_cursor -= 1;
+                return moveret_OK;
+            }
+            else
+            {
+                return moveret_End;
+            }
+        }
+        case movearg_Right:
+        {
+            row_cursor2 = row_cursor;
+            col_cursor2 = col_cursor;
+            r = array[row_cursor][col_cursor].cbox->move(b, m);
+            assert(r == moveret_OK || r == moveret_End);
+            if (r == moveret_End)
+            {
+                if (col_cursor < array[row_cursor].size() - 1)
+                {
+                    col_cursor2 = col_cursor = col_cursor + 1;
+                    array[row_cursor][col_cursor].cbox->move(b, movearg_First);
+                    return moveret_OK;
+                }
+                else if (row_cursor < array.size() - 1)
+                {
+                    row_cursor2 = row_cursor = row_cursor + 1;
+                    col_cursor2 = col_cursor = 0;
+                    array[row_cursor][col_cursor].cbox->move(b, movearg_First);
+                    return moveret_OK;
+                }
+            }
+            return r;
+        }
+        case movearg_ShiftRight:
+        {
+            if (row_cursor2 == row_cursor && col_cursor2 == col_cursor)
+            {
+                r = array[row_cursor][col_cursor].cbox->move(b, m);
+                assert(r == moveret_OK || r == moveret_End);
+                if (r == moveret_End && col_cursor < array[row_cursor].size() - 1)
+                {
+                    col_cursor += 1;
+                    return moveret_OK;
+                }
+                else
+                {
+                    return r;
+                }
+            }
+            else if (col_cursor < array[row_cursor].size() - 1)
+            {
+                col_cursor += 1;
+                return moveret_OK;
+            }
+            else
+            {
+                return moveret_End;
+            }
+        }
+        case movearg_Last:
+        {
+            row_cursor = row_cursor2 = array.size() - 1;
+            col_cursor = col_cursor2 = array[row_cursor].size() - 1;
+            array[row_cursor][col_cursor].cbox->move(b, movearg_Last);
+            return moveret_OK;
+        }
+        case movearg_First:
+        {
+            row_cursor = row_cursor2 = 0;
+            col_cursor = col_cursor2 = 0;
+            array[row_cursor][col_cursor].cbox->move(b, movearg_First);
+            return moveret_OK;
+        }
+        case movearg_Switch:
+        {
+            return moveret_OK;
+        }
+        default:
+        {
+            assert(false);
+            return moveret_OK;
+        }
+    }
+}
+
+moveRet sqrtbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
     {
         case movearg_Left:
         {
-            r = inside.cbox->move(movearg_Left);
+            r = inside.cbox->move(b, movearg_Left);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftLeft:
         {
-            r = inside.cbox->move(movearg_ShiftLeft);
+            r = inside.cbox->move(b, movearg_ShiftLeft);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Right:
         {
-            r = inside.cbox->move(movearg_Right);
+            r = inside.cbox->move(b, movearg_Right);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftRight:
         {
-            r = inside.cbox->move(movearg_ShiftRight);
+            r = inside.cbox->move(b, movearg_ShiftRight);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Last:
         {
-            r = inside.cbox->move(movearg_Last);
+            r = inside.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             return r;
         }
         case movearg_First:
         {
-            r = inside.cbox->move(movearg_First);
+            r = inside.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             return r;
+        }
+        case movearg_Switch:
+        {
+            return moveret_OK;
         }
         default:
         {
@@ -1030,7 +1328,60 @@ moveRet sqrtbox::move(moveArg m)
     }
 }
 
-moveRet fractionbox::move(moveArg m)
+moveRet rotationbox::move(boxbase*&b, moveArg m)
+{
+    moveRet r;
+    switch (m)
+    {
+        case movearg_Left:
+        {
+            r = inside.cbox->move(b, movearg_Left);
+            assert(r == moveret_OK || r == moveret_End);
+            return r;
+        }
+        case movearg_ShiftLeft:
+        {
+            r = inside.cbox->move(b, movearg_ShiftLeft);
+            assert(r == moveret_OK || r == moveret_End);
+            return r;
+        }
+        case movearg_Right:
+        {
+            r = inside.cbox->move(b, movearg_Right);
+            assert(r == moveret_OK || r == moveret_End);
+            return r;
+        }
+        case movearg_ShiftRight:
+        {
+            r = inside.cbox->move(b, movearg_ShiftRight);
+            assert(r == moveret_OK || r == moveret_End);
+            return r;
+        }
+        case movearg_Last:
+        {
+            r = inside.cbox->move(b, movearg_Last);
+            assert(r == moveret_OK);
+            return r;
+        }
+        case movearg_First:
+        {
+            r = inside.cbox->move(b, movearg_First);
+            assert(r == moveret_OK);
+            return r;
+        }
+        case movearg_Switch:
+        {
+            return moveret_OK;
+        }
+        default:
+        {
+            assert(false);
+            return moveret_OK;
+        }
+    }
+}
+
+moveRet fractionbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -1039,18 +1390,18 @@ moveRet fractionbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = num.cbox->move(movearg_Left);
+                r = num.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = den.cbox->move(movearg_Left);
+                r = den.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = num.cbox->move(movearg_Last);
+                    r = num.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -1061,14 +1412,14 @@ moveRet fractionbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = num.cbox->move(movearg_ShiftLeft);
+                r = num.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = den.cbox->move(movearg_ShiftLeft);
+                r = den.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -1077,18 +1428,18 @@ moveRet fractionbox::move(moveArg m)
         {
             if (cursor == 1)
             {
-                r = den.cbox->move(movearg_Right);
+                r = den.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 0);
-                r = num.cbox->move(movearg_Right);
+                r = num.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = den.cbox->move(movearg_First);
+                    r = den.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1099,32 +1450,36 @@ moveRet fractionbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = num.cbox->move(movearg_ShiftRight);
+                r = num.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = den.cbox->move(movearg_ShiftRight);
+                r = den.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = den.cbox->move(movearg_Last);
+            r = den.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             cursor = 1;
             return r;
         }
         case movearg_First:
         {
-            r = num.cbox->move(movearg_First);
+            r = num.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
         }
+        case movearg_Switch:
+        {
+            return moveret_OK;
+        }
         default:
         {
             assert(false);
@@ -1133,46 +1488,55 @@ moveRet fractionbox::move(moveArg m)
     }
 }
 
-moveRet subscriptbox::move(moveArg m)
+moveRet subscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
     {
         case movearg_Left:
         {
-            r = sub.cbox->move(movearg_Left);
+            r = sub.cbox->move(b, movearg_Left);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftLeft:
         {
-            r = sub.cbox->move(movearg_ShiftLeft);
+            r = sub.cbox->move(b, movearg_ShiftLeft);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Right:
         {
-            r = sub.cbox->move(movearg_Right);
+            r = sub.cbox->move(b, movearg_Right);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftRight:
         {
-            r = sub.cbox->move(movearg_ShiftRight);
+            r = sub.cbox->move(b, movearg_ShiftRight);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Last:
         {
-            r = sub.cbox->move(movearg_Last);
+            r = sub.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             return r;
         }
         case movearg_First:
         {
-            r = sub.cbox->move(movearg_First);
+            r = sub.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             return r;
+        }
+        case movearg_Switch:
+        {
+            rowbox * newsub = steal_rowbox(sub.cbox, 0,0);
+            rowbox* newsuper = new rowbox(2, 0,1);
+            newsuper->child[0].cibox = iboximm_make(CHAR_Placeholder);
+            newsuper->child[1].cibox.ptr = new nullbox();
+            b = new subsuperscriptbox(newsub, newsuper, 1);
+            return moveret_Replace;
         }
         default:
         {
@@ -1182,46 +1546,55 @@ moveRet subscriptbox::move(moveArg m)
     }
 }
 
-moveRet superscriptbox::move(moveArg m)
+moveRet superscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
     {
         case movearg_Left:
         {
-            r = super.cbox->move(movearg_Left);
+            r = super.cbox->move(b, movearg_Left);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftLeft:
         {
-            r = super.cbox->move(movearg_ShiftLeft);
+            r = super.cbox->move(b, movearg_ShiftLeft);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Right:
         {
-            r = super.cbox->move(movearg_Right);
+            r = super.cbox->move(b, movearg_Right);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_ShiftRight:
         {
-            r = super.cbox->move(movearg_ShiftRight);
+            r = super.cbox->move(b, movearg_ShiftRight);
             assert(r == moveret_OK || r == moveret_End);
             return r;
         }
         case movearg_Last:
         {
-            r = super.cbox->move(movearg_Last);
+            r = super.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             return r;
         }
         case movearg_First:
         {
-            r = super.cbox->move(movearg_First);
+            r = super.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             return r;
+        }
+        case movearg_Switch:
+        {
+            rowbox * newsuper = steal_rowbox(super.cbox, 0,0);
+            rowbox* newsub = new rowbox(2, 0,1);
+            newsub->child[0].cibox = iboximm_make(CHAR_Placeholder);
+            newsub->child[1].cibox.ptr = new nullbox();
+            b = new subsuperscriptbox(newsub, newsuper, 0);
+            return moveret_Replace;
         }
         default:
         {
@@ -1231,7 +1604,7 @@ moveRet superscriptbox::move(moveArg m)
     }
 }
 
-moveRet subsuperscriptbox::move(moveArg m)
+moveRet subsuperscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -1240,18 +1613,18 @@ moveRet subsuperscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = sub.cbox->move(movearg_Left);
+                r = sub.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = super.cbox->move(movearg_Left);
+                r = super.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = sub.cbox->move(movearg_Last);
+                    r = sub.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -1262,14 +1635,14 @@ moveRet subsuperscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = sub.cbox->move(movearg_ShiftLeft);
+                r = sub.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = super.cbox->move(movearg_Left);
+                r = super.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -1278,18 +1651,18 @@ moveRet subsuperscriptbox::move(moveArg m)
         {
             if (cursor == 1)
             {
-                r = super.cbox->move(movearg_Right);
+                r = super.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 0);
-                r = sub.cbox->move(movearg_Right);
+                r = sub.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = super.cbox->move(movearg_First);
+                    r = super.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1300,31 +1673,50 @@ moveRet subsuperscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = sub.cbox->move(movearg_ShiftRight);
+                r = sub.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = super.cbox->move(movearg_Right);
+                r = super.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = super.cbox->move(movearg_Last);
+            r = super.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             cursor = 1;
             return r;
         }
         case movearg_First:
         {
-            r = sub.cbox->move(movearg_First);
+            r = sub.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
+        }
+        case movearg_Switch:
+        {
+            if (cursor == 0)
+            {
+                size_t n = super.cbox->child.size();
+                super.cbox->cursor_a = 0;
+                super.cbox->cursor_b = n - 1;
+                cursor = 1;
+            }
+            else
+            {
+                assert(cursor == 1);
+                size_t n = sub.cbox->child.size();
+                sub.cbox->cursor_a = 0;
+                sub.cbox->cursor_b = n - 1;
+                cursor = 0;
+            }
+            return moveret_OK;
         }
         default:
         {
@@ -1334,7 +1726,7 @@ moveRet subsuperscriptbox::move(moveArg m)
     }
 }
 
-moveRet underscriptbox::move(moveArg m)
+moveRet underscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -1343,18 +1735,18 @@ moveRet underscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_Left);
+                r = body.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = under.cbox->move(movearg_Left);
+                r = under.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = body.cbox->move(movearg_Last);
+                    r = body.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -1365,14 +1757,14 @@ moveRet underscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftLeft);
+                r = body.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = under.cbox->move(movearg_ShiftLeft);
+                r = under.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -1381,18 +1773,18 @@ moveRet underscriptbox::move(moveArg m)
         {
             if (cursor == 1)
             {
-                r = under.cbox->move(movearg_Right);
+                r = under.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 0);
-                r = body.cbox->move(movearg_Right);
+                r = body.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = under.cbox->move(movearg_First);
+                    r = under.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1403,31 +1795,41 @@ moveRet underscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftRight);
+                r = body.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = under.cbox->move(movearg_ShiftRight);
+                r = under.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = under.cbox->move(movearg_Last);
+            r = under.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             cursor = 1;
             return r;
         }
         case movearg_First:
         {
-            r = body.cbox->move(movearg_First);
+            r = body.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
+        }
+        case movearg_Switch:
+        {
+            rowbox * newunder = steal_rowbox(under.cbox, 0,0);
+            rowbox * newbody = steal_rowbox(body.cbox, 0,0);
+            rowbox* newover = new rowbox(2, 0,1);
+            newover->child[0].cibox = iboximm_make(CHAR_Placeholder);
+            newover->child[1].cibox.ptr = new nullbox();
+            b = new underoverscriptbox(newbody, newunder, newover, 2);
+            return moveret_Replace;
         }
         default:
         {
@@ -1437,7 +1839,7 @@ moveRet underscriptbox::move(moveArg m)
     }
 }
 
-moveRet overscriptbox::move(moveArg m)
+moveRet overscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -1446,18 +1848,18 @@ moveRet overscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_Left);
+                r = body.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = over.cbox->move(movearg_Left);
+                r = over.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = body.cbox->move(movearg_Last);
+                    r = body.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -1468,14 +1870,14 @@ moveRet overscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftLeft);
+                r = body.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = over.cbox->move(movearg_ShiftLeft);
+                r = over.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -1484,18 +1886,18 @@ moveRet overscriptbox::move(moveArg m)
         {
             if (cursor == 1)
             {
-                r = over.cbox->move(movearg_Right);
+                r = over.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 0);
-                r = body.cbox->move(movearg_Right);
+                r = body.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = over.cbox->move(movearg_First);
+                    r = over.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1506,31 +1908,41 @@ moveRet overscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftRight);
+                r = body.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 1);
-                r = over.cbox->move(movearg_ShiftRight);
+                r = over.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = over.cbox->move(movearg_Last);
+            r = over.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             cursor = 1;
             return r;
         }
         case movearg_First:
         {
-            r = body.cbox->move(movearg_First);
+            r = body.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
+        }
+        case movearg_Switch:
+        {
+            rowbox * newover = steal_rowbox(over.cbox, 0,0);
+            rowbox * newbody = steal_rowbox(body.cbox, 0,0);
+            rowbox* newunder = new rowbox(2, 0,1);
+            newunder->child[0].cibox = iboximm_make(CHAR_Placeholder);
+            newunder->child[1].cibox.ptr = new nullbox();
+            b = new underoverscriptbox(newbody, newunder, newover, 1);
+            return moveret_Replace;
         }
         default:
         {
@@ -1540,7 +1952,7 @@ moveRet overscriptbox::move(moveArg m)
     }
 }
 
-moveRet underoverscriptbox::move(moveArg m)
+moveRet underoverscriptbox::move(boxbase*&b, moveArg m)
 {
     moveRet r;
     switch (m)
@@ -1549,17 +1961,17 @@ moveRet underoverscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_Left);
+                r = body.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else if (cursor == 1)
             {
-                r = under.cbox->move(movearg_Left);
+                r = under.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = body.cbox->move(movearg_Last);
+                    r = body.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 0;
                 }
@@ -1568,11 +1980,11 @@ moveRet underoverscriptbox::move(moveArg m)
             else
             {
                 assert(cursor == 2);
-                r = over.cbox->move(movearg_Left);
+                r = over.cbox->move(b, movearg_Left);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = under.cbox->move(movearg_Last);
+                    r = under.cbox->move(b, movearg_Last);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1583,20 +1995,20 @@ moveRet underoverscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftLeft);
+                r = body.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else if (cursor == 1)
             {
-                r = under.cbox->move(movearg_ShiftLeft);
+                r = under.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 2);
-                r = over.cbox->move(movearg_ShiftLeft);
+                r = over.cbox->move(b, movearg_ShiftLeft);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
@@ -1605,17 +2017,17 @@ moveRet underoverscriptbox::move(moveArg m)
         {
             if (cursor == 2)
             {
-                r = over.cbox->move(movearg_Right);
+                r = over.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else if (cursor == 1)
             {
-                r = under.cbox->move(movearg_Right);
+                r = under.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = over.cbox->move(movearg_First);
+                    r = over.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 2;
                 }
@@ -1624,11 +2036,11 @@ moveRet underoverscriptbox::move(moveArg m)
             else
             {
                 assert(cursor == 0);
-                r = body.cbox->move(movearg_Right);
+                r = body.cbox->move(b, movearg_Right);
                 assert(r == moveret_OK || r == moveret_End);
                 if (r == moveret_End)
                 {
-                    r = under.cbox->move(movearg_First);
+                    r = under.cbox->move(b, movearg_First);
                     assert(r == moveret_OK);
                     cursor = 1;
                 }
@@ -1639,37 +2051,55 @@ moveRet underoverscriptbox::move(moveArg m)
         {
             if (cursor == 0)
             {
-                r = body.cbox->move(movearg_ShiftRight);
+                r = body.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else if (cursor == 1)
             {
-                r = under.cbox->move(movearg_ShiftRight);
+                r = under.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
             else
             {
                 assert(cursor == 2);
-                r = over.cbox->move(movearg_ShiftRight);
+                r = over.cbox->move(b, movearg_ShiftRight);
                 assert(r == moveret_OK || r == moveret_End);
                 return r;
             }
         }
         case movearg_Last:
         {
-            r = over.cbox->move(movearg_Last);
+            r = over.cbox->move(b, movearg_Last);
             assert(r == moveret_OK);
             cursor = 2;
             return r;
         }
         case movearg_First:
         {
-            r = body.cbox->move(movearg_First);
+            r = body.cbox->move(b, movearg_First);
             assert(r == moveret_OK);
             cursor = 0;
             return r;
+        }
+        case movearg_Switch:
+        {
+            if (cursor == 1)
+            {
+                size_t n = over.cbox->child.size();
+                over.cbox->cursor_a = 0;
+                over.cbox->cursor_b = n - 1;
+                cursor = 2;
+            }
+            else if (cursor == 2)
+            {
+                size_t n = under.cbox->child.size();
+                under.cbox->cursor_a = 0;
+                under.cbox->cursor_b = n - 1;
+                cursor = 0;
+            }
+            return moveret_OK;   
         }
         default:
         {
@@ -1681,7 +2111,7 @@ moveRet underoverscriptbox::move(moveArg m)
 
 /* insert ********************************************************************/
 
-insertRet charbox::insert(insertArg m)
+insertRet charbox::insert(boxbase*&b, insertArg m)
 {
     insertRet r;
     switch (m)
@@ -1694,7 +2124,7 @@ insertRet charbox::insert(insertArg m)
     }
 }
 
-insertRet nullbox::insert(insertArg m)
+insertRet nullbox::insert(boxbase*&b, insertArg m)
 {
     insertRet r;
     switch (m)
@@ -1707,7 +2137,7 @@ insertRet nullbox::insert(insertArg m)
     }
 }
 
-insertRet graphics3dbox::insert(insertArg m)
+insertRet graphics3dbox::insert(boxbase*&b, insertArg m)
 {
     insertRet r;
     switch (m)
@@ -1719,7 +2149,7 @@ insertRet graphics3dbox::insert(insertArg m)
     }
 }
 
-insertRet rootbox::insert(insertArg m)
+insertRet rootbox::insert(boxbase*&b, insertArg m)
 {
     insertRet r;
     switch (m)
@@ -1729,7 +2159,7 @@ insertRet rootbox::insert(insertArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                childcells[cursor_a].cbox->insert(m);
+                childcells[cursor_a].cbox->insert(b, m);
                 return insertret_Done;
             }
             delete_selection();
@@ -1755,7 +2185,7 @@ insertRet rootbox::insert(insertArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                childcells[cursor_a].cbox->insert(m);
+                childcells[cursor_a].cbox->insert(b, m);
                 return insertret_Done;
             }
             delete_selection();
@@ -1778,7 +2208,7 @@ insertRet rootbox::insert(insertArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                childcells[cursor_a].cbox->insert(m);
+                childcells[cursor_a].cbox->insert(b, m);
                 return insertret_Done;
             }
             delete_selection();
@@ -1800,7 +2230,7 @@ insertRet rootbox::insert(insertArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                childcells[cursor_a].cbox->insert(m);
+                childcells[cursor_a].cbox->insert(b, m);
                 return insertret_Done;
             }
             delete_selection();
@@ -1818,7 +2248,7 @@ insertRet rootbox::insert(insertArg m)
             if (cursor_b > childcells.size())
             {
                 assert(cursor_a < childcells.size());
-                childcells[cursor_a].cbox->insert(m);
+                childcells[cursor_a].cbox->insert(b, m);
                 return insertret_Done;
             }
             delete_selection();
@@ -1840,16 +2270,16 @@ insertRet rootbox::insert(insertArg m)
     }
 }
 
-insertRet cellbox::insert(insertArg m)
+insertRet cellbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return body.cbox->insert(m);
+        return body.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 1);
-        return label.cbox->insert(m);
+        return label.cbox->insert(b, m);
     }
 }
 
@@ -1930,7 +2360,7 @@ void rowbox::select_prev_if_possible()
 }
 
 
-insertRet rowbox::insert(insertArg m)
+insertRet rowbox::insert(boxbase*&b, insertArg m)
 {
 //printf("rowbox::insert called m = %d\n", m);
 
@@ -1943,7 +2373,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -1985,7 +2415,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -2017,7 +2447,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             delete_selection();
             child.insert(child.begin() + cursor_a, iboxarrayelem(new nullbox()));
@@ -2028,7 +2458,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -2060,7 +2490,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -2092,7 +2522,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -2134,7 +2564,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             else if (cursor_a == cursor_b)
             {
@@ -2176,7 +2606,7 @@ insertRet rowbox::insert(insertArg m)
         {
             if (cursor_b >= child.size())
             {
-                return ibox_to_ptr(child[cursor_a].cibox)->insert(m);
+                return ibox_to_ptr(child[cursor_a].cibox)->insert(b, m);
             }
             delete_selection();
             child.insert(child.begin() + cursor_a, iboxarrayelem(new graphics3dbox()));
@@ -2191,89 +2621,100 @@ insertRet rowbox::insert(insertArg m)
     }
 }
 
-insertRet fractionbox::insert(insertArg m)
+insertRet fractionbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return num.cbox->insert(m);
+        return num.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 1);
-        return den.cbox->insert(m);
+        return den.cbox->insert(b, m);
     }
 }
 
-insertRet sqrtbox::insert(insertArg m)
+insertRet sqrtbox::insert(boxbase*&b, insertArg m)
 {
-    return inside.cbox->insert(m);
+    return inside.cbox->insert(b, m);
 }
 
-insertRet subscriptbox::insert(insertArg m)
+insertRet rotationbox::insert(boxbase*&b, insertArg m)
 {
-    return sub.cbox->insert(m);
+    return inside.cbox->insert(b, m);
 }
 
-insertRet superscriptbox::insert(insertArg m)
+insertRet subscriptbox::insert(boxbase*&b, insertArg m)
 {
-    return super.cbox->insert(m);
+    return sub.cbox->insert(b, m);
 }
 
-insertRet subsuperscriptbox::insert(insertArg m)
+insertRet superscriptbox::insert(boxbase*&b, insertArg m)
+{
+    return super.cbox->insert(b, m);
+}
+
+insertRet subsuperscriptbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return sub.cbox->insert(m);
+        return sub.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 1);
-        return super.cbox->insert(m);
+        return super.cbox->insert(b, m);
     }
 }
 
-insertRet underscriptbox::insert(insertArg m)
+insertRet underscriptbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return body.cbox->insert(m);
+        return body.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 1);
-        return under.cbox->insert(m);
+        return under.cbox->insert(b, m);
     }
 }
 
-insertRet overscriptbox::insert(insertArg m)
+insertRet overscriptbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return body.cbox->insert(m);
+        return body.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 1);
-        return over.cbox->insert(m);
+        return over.cbox->insert(b, m);
     }
 }
 
-insertRet underoverscriptbox::insert(insertArg m)
+insertRet underoverscriptbox::insert(boxbase*&b, insertArg m)
 {
     if (cursor == 0)
     {
-        return body.cbox->insert(m);
+        return body.cbox->insert(b, m);
     }
     else if (cursor == 1)
     {
-        return under.cbox->insert(m);
+        return under.cbox->insert(b, m);
     }
     else
     {
         assert(cursor == 2);
-        return over.cbox->insert(m);
+        return over.cbox->insert(b, m);
     }
 }
+
+insertRet gridbox::insert(boxbase*&b, insertArg m)
+{
+    return array[row_cursor][col_cursor].cbox->insert(b, m);
+}
+
 
 
 /* remove ********************************************************************/
@@ -2410,7 +2851,7 @@ removeRet rowbox::remove(boxbase*&b, removeArg m)
     {
         assert(cursor_a < child.size());
         r = ibox_to_ptr(child[cursor_a].cibox)->remove(b, m);
-        assert(r == removeret_OK || r == removeret_Replace);
+        assert(r == removeret_OK || r == removeret_Replace || r == removeret_End);
         if (r == removeret_Replace)
         {
             delete ibox_to_ptr(child[cursor_a].cibox);
@@ -2425,14 +2866,17 @@ removeRet rowbox::remove(boxbase*&b, removeArg m)
                 child.erase(child.begin() + cursor_a);
                 cursor_b = cursor_a;
                 rowbox* row = dynamic_cast<rowbox*>(b);
-                child.insert(child.begin() + cursor_a, row->child.size() , iboxarrayelem(iboximm_make(0)));
-                for (int32_t j = 0; j < row->child.size(); j++)
+                size_t n = row->child.size();
+                if (n > 0 && BNTYPE_NULLER == ibox_type(row->child[n - 1].cibox))
+                    n--;
+                child.insert(child.begin() + cursor_a, n, iboxarrayelem(iboximm_make(0)));
+                for (int32_t j = 0; j < n; j++)
                 {
                     child[cursor_a + j].cibox = row->child[j].cibox;
                     row->child[j].cibox = iboximm_make(0);
                 }
                 if (m == removearg_Left)
-                    cursor_b = cursor_a = cursor_a + row->child.size();
+                    cursor_b = cursor_a = cursor_a + n;
                 delete b;
                 b = nullptr;
                 return removeret_OK;
@@ -2443,6 +2887,13 @@ removeRet rowbox::remove(boxbase*&b, removeArg m)
                 b = nullptr;
                 return removeret_OK;
             }
+        }
+        else if (r == removeret_End)
+        {
+            if (m == removearg_Right)
+                cursor_a++;
+            cursor_b = cursor_a;
+            return removeret_OK;
         }
         else
         {
@@ -2471,7 +2922,7 @@ removeRet rowbox::remove(boxbase*&b, removeArg m)
                 else
                 {
                     cursor_a--;
-                    s = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_Last);
+                    s = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_Last);
                     assert(s == moveret_OK || s == moveret_End);
                     if (s == moveret_End)
                     {
@@ -2501,7 +2952,7 @@ removeRet rowbox::remove(boxbase*&b, removeArg m)
                 }
                 else
                 {
-                    s = ibox_to_ptr(child[cursor_a].cibox)->move(movearg_First);
+                    s = ibox_to_ptr(child[cursor_a].cibox)->move(b, movearg_First);
                     assert(s == moveret_OK || s == moveret_End);
                     if (s == moveret_End)
                     {
@@ -2542,28 +2993,17 @@ removeRet subscriptbox::remove(boxbase*&b, removeArg m)
     {
         r = sub.cbox->remove(b, m);
         assert(r == removeret_End || r == removeret_OK);
+        if (made_into_placeholder(sub.cbox))
+        {
+            return removeret_OK;
+        }
         if (r == removeret_End)
         {
-            if (sub.cbox->child.size() > 1)
-            {
-                rowbox * row = new rowbox(sub.cbox->child.size() - 1, 0, 0);
-                for (int32_t i = 0; i + 1 < sub.cbox->child.size(); i++)
-                {
-                    row->child[i].cibox = sub.cbox->child[i].cibox;
-                    sub.cbox->child[i].cibox = iboximm_make(0);
-                }
-                b = row;
-            }
+            b = steal_rowbox(sub.cbox, 0,0);
             return removeret_Replace;
         }
         else
         {
-            if (sub.cbox->child.size() == 1)
-            {
-                sub.cbox->child.insert(sub.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                sub.cbox->cursor_a = 0;
-                sub.cbox->cursor_b = 1;
-            }
             return removeret_OK;
         }
     }
@@ -2571,7 +3011,9 @@ removeRet subscriptbox::remove(boxbase*&b, removeArg m)
 
 removeRet superscriptbox::remove(boxbase*&b, removeArg m)
 {
+    assert(b == nullptr);
     removeRet r;
+
     if (super.cbox->is_selected_placeholder())
     {
         b = nullptr;
@@ -2581,28 +3023,17 @@ removeRet superscriptbox::remove(boxbase*&b, removeArg m)
     {
         r = super.cbox->remove(b, m);
         assert(r == removeret_End || r == removeret_OK);
+        if (made_into_placeholder(super.cbox))
+        {
+            return removeret_OK;
+        }
         if (r == removeret_End)
         {
-            if (super.cbox->child.size() > 1)
-            {
-                rowbox * row = new rowbox(super.cbox->child.size() - 1, 0, 0);
-                for (int32_t i = 0; i + 1 < super.cbox->child.size(); i++)
-                {
-                    row->child[i].cibox = super.cbox->child[i].cibox;
-                    super.cbox->child[i].cibox = iboximm_make(0);
-                }
-                b = row;
-            }
+            b = steal_rowbox(super.cbox, 0,0);
             return removeret_Replace;
         }
         else
         {
-            if (super.cbox->child.size() == 1)
-            {
-                super.cbox->child.insert(super.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                super.cbox->cursor_a = 0;
-                super.cbox->cursor_b = 1;
-            }
             return removeret_OK;
         }
     }
@@ -2617,41 +3048,35 @@ removeRet subsuperscriptbox::remove(boxbase*&b, removeArg m)
     {
         if (sub.cbox->is_selected_placeholder())
         {
-            rowbox * row = new rowbox(super.cbox->child.size(), super.cbox->child.size() - 1, super.cbox->child.size() - 1);
-            for (int32_t i = 0; i < super.cbox->child.size(); i++)
-            {
-                row->child[i].cibox = super.cbox->child[i].cibox;
-                super.cbox->child[i].cibox = iboximm_make(0);
-            }
-            b = new superscriptbox(row);
+            int32_t n = m == removearg_Right ? 0 : super.cbox->child.size() - 1;
+            rowbox * newsuper = steal_rowbox(super.cbox, n,n);
+            b = new superscriptbox(newsuper);
             return removeret_Replace;
         }
         else
         {
             r = sub.cbox->remove(b, m);
             assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(sub.cbox))
+            {
+                return removeret_OK;
+            }
             if (r == removeret_End)
             {
-                if (sub.cbox->child.size() > 1)
+                if (m == removearg_Left)
                 {
-                    rowbox * row = new rowbox(sub.cbox->child.size() - 1, 0, 0);
-                    for (int32_t i = 0; i + 1 < sub.cbox->child.size(); i++)
-                    {
-                        row->child[i].cibox = sub.cbox->child[i].cibox;
-                        sub.cbox->child[i].cibox = iboximm_make(0);
-                    }
-                    b = row;
+                    return removeret_End;
                 }
-                return removeret_Replace;
+                else
+                {
+                    super.cbox->cursor_a = 0;
+                    super.cbox->cursor_b = 0;
+                    cursor = 1;
+                    return removeret_OK;
+                }
             }
             else
             {
-                if (sub.cbox->child.size() == 1)
-                {
-                    sub.cbox->child.insert(sub.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                    sub.cbox->cursor_a = 0;
-                    sub.cbox->cursor_b = 1;
-                }
                 return removeret_OK;
             }
         }
@@ -2661,38 +3086,35 @@ removeRet subsuperscriptbox::remove(boxbase*&b, removeArg m)
         assert(cursor == 1);
         if (super.cbox->is_selected_placeholder())
         {
-            rowbox * row = new rowbox(sub.cbox->child.size(), sub.cbox->child.size() - 1, sub.cbox->child.size() - 1);
-            for (int32_t i = 0; i < sub.cbox->child.size(); i++)
-            {
-                row->child[i].cibox = sub.cbox->child[i].cibox;
-                sub.cbox->child[i].cibox = iboximm_make(0);
-            }
-            b = new subscriptbox(row);
+            int32_t n = m == removearg_Right ? 0 : sub.cbox->child.size() - 1;
+            rowbox * newsub = steal_rowbox(sub.cbox, n,n);
+            b = new subscriptbox(newsub);
             return removeret_Replace;
         }
         else
         {
             r = super.cbox->remove(b, m);
             assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(super.cbox))
+            {
+                return removeret_OK;
+            }
             if (r == removeret_End)
             {
-                rowbox * row = new rowbox(sub.cbox->child.size() - 1, 0, 0);
-                for (int32_t i = 0; i + 1 < sub.cbox->child.size(); i++)
+                if (m == removearg_Right)
                 {
-                    row->child[i].cibox = sub.cbox->child[i].cibox;
-                    sub.cbox->child[i].cibox = iboximm_make(0);
+                    return removeret_End;
                 }
-                b = row;
-                return removeret_Replace;
+                else
+                {
+                    sub.cbox->cursor_a = sub.cbox->child.size() - 1;
+                    sub.cbox->cursor_b = sub.cbox->child.size() - 1;
+                    cursor = 0;
+                    return removeret_OK;
+                }
             }
             else
             {
-                if (super.cbox->child.size() == 1)
-                {
-                    super.cbox->child.insert(super.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                    super.cbox->cursor_a = 0;
-                    super.cbox->cursor_b = 1;
-                }
                 return removeret_OK;
             }
         }
@@ -2701,72 +3123,166 @@ removeRet subsuperscriptbox::remove(boxbase*&b, removeArg m)
 
 removeRet underscriptbox::remove(boxbase*&b, removeArg m)
 {
+    assert(b == nullptr);
     removeRet r;
-    switch (m)
+
+    if (cursor == 0)
     {
-        case removearg_Left:
+        if (body.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            b = nullptr;
+            return removeret_Replace;
         }
-        case removearg_Right:
+        else
         {
-            assert(false);
-            return removeret_Bad;
+            r = body.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(body.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
-        default:
+    }
+    else
+    {
+        assert(cursor == 1);
+        if (under.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            b = steal_rowbox(body.cbox, 0,0);
+            return removeret_Replace;
+        }
+        else
+        {
+            r = under.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(under.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
     }
 }
 
 removeRet overscriptbox::remove(boxbase*&b, removeArg m)
 {
+    assert(b == nullptr);
     removeRet r;
-    switch (m)
+
+    if (cursor == 0)
     {
-        case removearg_Left:
+        if (body.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            b = nullptr;
+            return removeret_Replace;
         }
-        case removearg_Right:
+        else
         {
-            assert(false);
-            return removeret_Bad;
+            r = body.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(body.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
-        default:
+    }
+    else
+    {
+        assert(cursor == 1);
+        if (over.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            b = steal_rowbox(body.cbox, 0,0);
+            return removeret_Replace;
+        }
+        else
+        {
+            r = over.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(over.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
     }
 }
 
+
 removeRet underoverscriptbox::remove(boxbase*&b, removeArg m)
 {
+    assert(b == nullptr);
     removeRet r;
-    switch (m)
+
+    if (cursor == 0)
     {
-        case removearg_Left:
+        if (body.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            b = nullptr;
+            return removeret_Replace;
         }
-        case removearg_Right:
+        else
         {
-            assert(false);
-            return removeret_Bad;
+            r = body.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(body.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
-        default:
+    }
+    else if (cursor == 1)
+    {
+        if (under.cbox->is_selected_placeholder())
         {
-            assert(false);
-            return removeret_Bad;
+            rowbox * newover = steal_rowbox(over.cbox, 0,0);
+            int32_t n = body.cbox->child.size() - 1;
+            rowbox * newbody = steal_rowbox(body.cbox, n,n);
+            b = new overscriptbox(newbody, newover, m == removearg_Left ? 0 : 1);
+            return removeret_Replace;
+        }
+        else
+        {
+            r = under.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(under.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
+        }
+    }
+    else
+    {
+        assert(cursor == 2);
+        if (over.cbox->is_selected_placeholder())
+        {
+            int32_t n = m == removearg_Right ? 0 : under.cbox->child.size() - 1;
+            rowbox * newunder = steal_rowbox(under.cbox, n,n);
+            rowbox * newbody = steal_rowbox(body.cbox, 0,0);
+            b = new underscriptbox(newbody, newunder, 1);
+            return removeret_Replace;
+        }
+        else
+        {
+            r = over.cbox->remove(b, m);
+            assert(r == removeret_End || r == removeret_OK);
+            if (made_into_placeholder(over.cbox))
+            {
+                return removeret_OK;
+            }
+            return r;
         }
     }
 }
+
+removeRet gridbox::remove(boxbase*&b, removeArg m)
+{
+    return removeret_OK;
+}
+
 
 removeRet fractionbox::remove(boxbase*&b, removeArg m)
 {
@@ -2786,26 +3302,12 @@ removeRet fractionbox::remove(boxbase*&b, removeArg m)
             assert(r == removeret_End || r == removeret_OK);
             if (r == removeret_End)
             {
-                if (num.cbox->child.size() > 1)
-                {
-                    rowbox * row = new rowbox(num.cbox->child.size() - 1, 0, 0);
-                    for (int32_t i = 0; i + 1 < num.cbox->child.size(); i++)
-                    {
-                        row->child[i].cibox = num.cbox->child[i].cibox;
-                        num.cbox->child[i].cibox = iboximm_make(0);
-                    }
-                    b = row;
-                }
+                b = steal_rowbox(num.cbox, 0,0);
                 return removeret_Replace;
             }
             else
             {
-                if (num.cbox->child.size() == 1)
-                {
-                    num.cbox->child.insert(num.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                    num.cbox->cursor_a = 0;
-                    num.cbox->cursor_b = 1;
-                }
+                made_into_placeholder(num.cbox);
                 return removeret_OK;
             }
         }
@@ -2815,18 +3317,7 @@ removeRet fractionbox::remove(boxbase*&b, removeArg m)
         assert(cursor == 1);
         if (den.cbox->is_selected_placeholder())
         {
-printf("deleting denominator\n");
-            rowbox * row = new rowbox(num.cbox->child.size() - 1, 0, 0);
-            for (int32_t i = 0; i + 1 < num.cbox->child.size(); i++)
-            {
-                row->child[i].cibox = num.cbox->child[i].cibox;
-                num.cbox->child[i].cibox = iboximm_make(0);
-            }
-            b = row;
-
-std::cout << "b: " << std::endl;
-b->print(0,0,0);
-
+            b = steal_rowbox(num.cbox, 0,0);
             return removeret_Replace;
         }
         else
@@ -2835,23 +3326,12 @@ b->print(0,0,0);
             assert(r == removeret_End || r == removeret_OK);
             if (r == removeret_End)
             {
-                rowbox * row = new rowbox(num.cbox->child.size() - 1, 0, 0);
-                for (int32_t i = 0; i + 1 < num.cbox->child.size(); i++)
-                {
-                    row->child[i].cibox = num.cbox->child[i].cibox;
-                    num.cbox->child[i].cibox = iboximm_make(0);
-                }
-                b = row;
+                b = steal_rowbox(num.cbox, 0,0);
                 return removeret_Replace;
             }
             else
             {
-                if (den.cbox->child.size() == 1)
-                {
-                    den.cbox->child.insert(den.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                    den.cbox->cursor_a = 0;
-                    den.cbox->cursor_b = 1;
-                }
+                made_into_placeholder(den.cbox);
                 return removeret_OK;
             }
         }
@@ -2874,26 +3354,39 @@ removeRet sqrtbox::remove(boxbase*&b, removeArg m)
         assert(r == removeret_End || r == removeret_OK);
         if (r == removeret_End)
         {
-            if (inside.cbox->child.size() > 1)
-            {
-                rowbox * row = new rowbox(inside.cbox->child.size() - 1, 0, 0);
-                for (int32_t i = 0; i + 1 < inside.cbox->child.size(); i++)
-                {
-                    row->child[i].cibox = inside.cbox->child[i].cibox;
-                    inside.cbox->child[i].cibox = iboximm_make(0);
-                }
-                b = row;
-            }
+            b = steal_rowbox(inside.cbox, 0,0);
             return removeret_Replace;
         }
         else
         {
-            if (inside.cbox->child.size() == 1)
-            {
-                inside.cbox->child.insert(inside.cbox->child.begin(), iboximm_make(CHAR_Placeholder));
-                inside.cbox->cursor_a = 0;
-                inside.cbox->cursor_b = 1;
-            }
+            made_into_placeholder(inside.cbox);
+            return removeret_OK;
+        }
+    }
+}
+
+removeRet rotationbox::remove(boxbase*&b, removeArg m)
+{
+    assert(b == nullptr);
+    removeRet r;
+
+    if (inside.cbox->is_selected_placeholder())
+    {
+        b = nullptr;
+        return removeret_Replace;
+    }
+    else
+    {
+        r = inside.cbox->remove(b, m);
+        assert(r == removeret_End || r == removeret_OK);
+        if (r == removeret_End)
+        {
+            b = steal_rowbox(inside.cbox, 0,0);
+            return removeret_Replace;
+        }
+        else
+        {
+            made_into_placeholder(inside.cbox);
             return removeret_OK;
         }
     }
@@ -3046,6 +3539,15 @@ ex sqrtbox::get_ex()
     return emake_node(gs.sym_sSqrtBox.copy(), t);
 }
 
+ex rotationbox::get_ex()
+{
+    uex t1(inside.cbox->get_ex());
+    uex t2(emake_cint(0)); // TODO
+    uex t3(emake_int_ui(angle));
+    ex t4 = emake_int_ui(original_angle);
+    return emake_node(gs.sym_sRotationBox.copy(), t1.release(), t2.release(), t3.release(), t4);
+}
+
 ex subscriptbox::get_ex()
 {
     ex t = sub.cbox->get_ex();
@@ -3062,7 +3564,7 @@ ex subsuperscriptbox::get_ex()
 {
     uex t1(sub.cbox->get_ex());
     ex t2 = super.cbox->get_ex();
-    return emake_node(gs.sym_sSuperscriptBox.copy(), t1.release(), t2);
+    return emake_node(gs.sym_sSubsuperscriptBox.copy(), t1.release(), t2);
 }
 
 ex fractionbox::get_ex()
@@ -3076,14 +3578,14 @@ ex overscriptbox::get_ex()
 {
     uex t1(body.cbox->get_ex());
     ex t2 = over.cbox->get_ex();
-    return emake_node(gs.sym_sFractionBox.copy(), t1.release(), t2);
+    return emake_node(gs.sym_sOverscriptBox.copy(), t1.release(), t2);
 }
 
 ex underscriptbox::get_ex()
 {
     uex t1(body.cbox->get_ex());
     ex t2 = under.cbox->get_ex();
-    return emake_node(gs.sym_sFractionBox.copy(), t1.release(), t2);
+    return emake_node(gs.sym_sUnderscriptBox.copy(), t1.release(), t2);
 }
 
 ex underoverscriptbox::get_ex()
@@ -3091,7 +3593,20 @@ ex underoverscriptbox::get_ex()
     uex t1(body.cbox->get_ex());
     uex t2(under.cbox->get_ex());
     ex t3 = over.cbox->get_ex();
-    return emake_node(gs.sym_sFractionBox.copy(), t1.release(), t2.release(), t3);
+    return emake_node(gs.sym_sUnderoverscriptBox.copy(), t1.release(), t2.release(), t3);
+}
+
+ex gridbox::get_ex()
+{
+    uex m(gs.sym_sList.get(), array.size());
+    for (auto i = array.begin(); i != array.end(); ++i)
+    {
+        uex r(gs.sym_sList.get(), i->size());
+        for (auto j = i->begin(); j != i->end(); ++j)
+            r.push_back(j->cbox->get_ex());
+        m.push_back(r.release());
+    }
+    return m.release();
 }
 
 /**********************************************************************************************/
