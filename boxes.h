@@ -5,39 +5,15 @@
 #include "graphics.h"
 #include "ex_parse.h"
 
-/************************** nodes **************************/
-
-/*
-    internal rules:
-
-    - all not char nodes must have at least one child.
-    - ROOT must only last child null, and all other children CELL or CELLGROUP.
-    - CELLGROUP must have at least two children, all are CELL or CELLGROUP.
-    - CELL, GRID, SQRT, SUPER, SUB must have childern ROW.
-    - ROW must have child null for end of lines, and all other children not ROW.
-
-    - Cursor must not point to ROW or CELLGROUP or ROOT nodes.
-
-    The full list of rules is in the function notebok::set_ex.
-*/
-
-#define SELTYPE_NONE 0
-#define SELTYPE_ROW 1
-#define SELTYPE_GRID 3
-#define SELTYPE_CELL 4
-
-
-#define BNTYPE_TEXT    -1
-#define BNTYPE_STRING  -2
-#define BNTYPE_PLOT2D  -3
-#define BNTYPE_PLOT3D  -4
-
-#define BNTYPE_NULLER  -6
-
-#define BNTYPE_ROOT -11
-#define BNTYPE_COL  -12
-#define BNTYPE_ROW  -13
-
+#define BNTYPE_TEXT      -1
+#define BNTYPE_STRING    -2
+#define BNTYPE_PLOT2D    -3
+#define BNTYPE_PLOT3D    -4
+#define BNTYPE_NULLER    -6
+#define BNTYPE_ERROR     -7
+#define BNTYPE_ROOT      -11
+#define BNTYPE_COL       -12
+#define BNTYPE_ROW       -13
 #define BNTYPE_CELLGROUP -20
 #define BNTYPE_CELL      -21
 #define BNTYPE_FRAC      -22
@@ -52,26 +28,38 @@
 #define BNTYPE_ROT       -31
 #define BNTYPE_BUTTON    -32
 #define BNTYPE_TABVIEW   -33
+#define BNTYPE_MONO      -34
 
-#define BNTYPE_STUB -35
+#define BNFLAG_MEASURED    1
+#define BNFLAG_COLORED     2
+#define BNFLAG_OPEN        8
+#define BNFLAG_PRINTMARK   16
+#define BNFLAG_CURSORAMARK 32
+#define BNFLAG_CURSORBMARK 64
 
+#define CURSOR_WIDTH 3
+#define COL_EXTRA 1
 
+#define GRID_EXTRAX1 (0.4)
+#define GRID_EXTRAX2 (0.9)
+#define GRID_EXTRAX3 (0.4)
+#define GRID_EXTRAY1 (0.2)
+#define GRID_EXTRAY2 (0.5)
+#define GRID_EXTRAY3 (0.2)
 
-#define CELLTYPE_INPUT   0
-#define CELLTYPE_OUTPUT  1
-#define CELLTYPE_MESSAGE 2
-#define CELLTYPE_PRINT   3
-#define CELLTYPE_TEXT    4
-#define CELLTYPE_BOLDTEXT    5
-#define CELLTYPE_SUBSUBSECTION    6
-#define CELLTYPE_SUBSECTION    7
-#define CELLTYPE_SECTION    8
-#define CELLTYPE_TITLE    9
+#define GP_SIZEX 7
+#define GP_EXTRAX 3
 
-#define BNFLAG_MEASURED  1
-#define BNFLAG_COLORED   2
-#define BNFLAG_OPEN      8
-#define BNFLAG_MARKED    16
+#define MAX_ROW_WIDTH 5000
+#define MIN_ROW_WIDTH 50
+#define ROW_DECREMENT 10
+
+#define MFLAG_EXSPACE 1
+
+#define DFLAG_SCOLOR 1
+#define DFLAG_NLINE  2
+#define DFLAG_SELECTION 4
+#define DFLAG_IGNORESEL 8
 
 
 enum cellType {
@@ -84,8 +72,11 @@ enum cellType {
     cellt_SUBSUBSECTION,
     cellt_SUBSECTION,
     cellt_SECTION,
-    cellt_TITLE
+    cellt_TITLE,
+    cellt_max
 };
+
+extern const char* cell_type_names[cellt_max];
 
 enum moveRet {
     moveret_OK,
@@ -103,7 +94,10 @@ enum moveArg {
     movearg_Down,
     movearg_ShiftUp,
     movearg_ShiftDown,
-    movearg_Switch
+    movearg_Switch,
+    movearg_Home,
+    movearg_End,
+    movearg_Tab
 };
 
 enum insertRet {
@@ -127,7 +121,6 @@ enum insertArg {
     insertarg_,
 };
 
-
 enum removeRet {
     removeret_OK,
     removeret_End,
@@ -139,6 +132,16 @@ enum removeArg {
     removearg_Right,
 };
 
+enum visitRet {
+    visitret_OK
+};
+enum visitArg {
+    visitarg_InvalidateAll
+};
+
+
+std::string stdvector_tostring(std::vector<int32_t> v);
+
 
 class notebook;
 class bsymer;
@@ -148,7 +151,9 @@ public:
     uint32_t fi;
     int32_t deswidth;
     uint32_t mflags;
-    boxmeasurearg(uint32_t fi_, int32_t deswidth_, uint32_t mflags_) : fi(fi_), deswidth(deswidth_), mflags(mflags_) {};
+    int32_t level;
+    boxmeasurearg(uint32_t fi_, int32_t deswidth_, uint32_t mflags_, int32_t level_) : fi(fi_), deswidth(deswidth_), mflags(mflags_), level(level_) {};
+    boxmeasurearg(const boxmeasurearg& other) : fi(other.fi), deswidth(other.deswidth), mflags(other.mflags), level(other.level + 1) {};
 };
 
 class boxdrawarg {
@@ -156,31 +161,32 @@ public:
     notebook * nb;
     int32_t globx, globy;
     uint32_t dflags;
+    int32_t level;
     aftransform* T;
     boxdrawarg(notebook * nb_, int32_t globx_, int32_t globy_, uint32_t dflags_, aftransform* T_)
-         : nb(nb_), globx(globx_), globy(globy_), dflags(dflags_), T(T_) {};
+         : nb(nb_), globx(globx_), globy(globy_), dflags(dflags_), level(0), T(T_) {};
     boxdrawarg(const boxdrawarg& other, int32_t x, int32_t y)
-         : nb(other.nb), globx(other.globx + x), globy(other.globy + y), dflags(other.dflags), T(other.T) {};
+         : nb(other.nb), globx(other.globx + x), globy(other.globy + y), dflags(other.dflags), level(other.level+1), T(other.T) {};
     boxdrawarg(const boxdrawarg& other, int32_t x, int32_t y, uint32_t f)
-         : nb(other.nb), globx(other.globx + x), globy(other.globy + y), dflags(other.dflags | f), T(other.T) {};
+         : nb(other.nb), globx(other.globx + x), globy(other.globy + y), dflags(other.dflags | f), level(other.level+1), T(other.T) {};
     inline std::string tostring() {
         std::string s;
         s.push_back('[');
-        s.append(std::to_string(T->orig_x));
+        s.append(stdstring_to_string(T->orig_x));
         s.push_back(',');
-        s.append(std::to_string(T->orig_y));
+        s.append(stdstring_to_string(T->orig_y));
         s.push_back(']');
         s.push_back('[');
-        s.append(std::to_string(T->theta));
+        s.append(stdstring_to_string(T->theta));
         s.push_back(']');
         s.push_back('+');
         s.push_back('[');
-        s.append(std::to_string(globx));
+        s.append(stdstring_to_string(globx));
         s.push_back(',');
-        s.append(std::to_string(globy));
+        s.append(stdstring_to_string(globy));
         s.push_back(']');
         s.push_back(' ');
-        s.append(std::to_string(dflags));
+        s.append(stdstring_to_string(dflags));
         return s;
     };
 };
@@ -199,13 +205,18 @@ public:
     virtual void print(size_t indent, int32_t offx, int32_t offy) {assert(false);};
     virtual void insert_char(int32_t c) {assert(false);};
     virtual void measure(boxmeasurearg ma) {assert(false);};
+    virtual void get_cursor(aftransform * T) {assert(false);};
     virtual void draw_pre(boxdrawarg da) {assert(false);};
     virtual void draw_main(boxdrawarg da) {assert(false);};
     virtual void draw_post(boxdrawarg da) {assert(false);};
-    virtual moveRet move(boxbase*&b, moveArg m) {assert(false);};
-    virtual insertRet insert(boxbase*&b, insertArg m) {assert(false);};
-    virtual removeRet remove(boxbase*&b, removeArg m) {assert(false);};
-    virtual ex get_ex() {assert(false);};
+    virtual boxbase * copy() {assert(false); return nullptr;};
+    virtual void key_copy(boxbase*&b) {assert(false);};
+    virtual void key_paste(boxbase*&b) {assert(false);};
+    virtual visitRet visit(visitArg m) {assert(false); return visitret_OK;};
+    virtual moveRet move(boxbase*&b, moveArg m) {assert(false); return moveret_OK;};
+    virtual insertRet insert(boxbase*&b, insertArg m) {assert(false); return insertret_Done;};
+    virtual removeRet remove(boxbase*&b, removeArg m) {assert(false); return removeret_OK;};
+    virtual ex get_ex() {assert(false); return nullptr;};
     virtual void set_scolor(bsymer* B) {assert(false);};
 };
 
@@ -216,10 +227,15 @@ public:
     void print(size_t indent, int32_t offx, int32_t offy);
     void insert_char(int32_t c);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -233,10 +249,37 @@ public:
     void print(size_t indent, int32_t offx, int32_t offy);
     void insert_char(int32_t c);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
+    visitRet visit(visitArg m);
+    moveRet move(boxbase*&b, moveArg m);    
+    insertRet insert(boxbase*&b, insertArg m);
+    removeRet remove(boxbase*&b, removeArg m);
+    ex get_ex();
+};
+
+class errorbox : public boxbase {
+public:
+
+    errorbox(er e) : boxbase(BNTYPE_ERROR, 40, 40, 20) {};
+    void print(size_t indent, int32_t offx, int32_t offy);
+    void insert_char(int32_t c);
+    void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
+    void draw_pre(boxdrawarg ma);
+    void draw_main(boxdrawarg ma);
+    void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
+    void set_scolor(bsymer* B);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);    
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -269,6 +312,27 @@ inline int32_t iboxchar_type(ibox b)    {assert(ibox_is_char(b)); return ibox_ty
 inline int32_t iboxchar_lextype(ibox b) {assert(ibox_is_char(b)); return (ibox_type(b) >> 16)&255;}
 inline int32_t iboxchar_symtype(ibox b) {assert(ibox_is_char(b)); return (ibox_type(b) >> 24)&255;}
 
+inline ibox ibox_copy(ibox a)
+{
+    if (ibox_is_imm(a))
+    {
+        return a;
+    }
+    else
+    {
+        ibox b;
+        b.ptr = ibox_to_ptr(a)->copy();
+        return b;
+    }
+}
+
+
+inline ibox iboxptr_make(boxbase* p)
+{
+    ibox b;
+    b.ptr = p;
+    return b;
+}
 
 inline ibox iboximm_make(int32_t type)
 {
@@ -355,7 +419,7 @@ public:
         child.resize(size);
     };
 
-    rowbox(const unsigned char * a, size_t n) : boxbase(BNTYPE_ROW)
+    rowbox(const char * a, size_t n) : boxbase(BNTYPE_ROW)
     {
         cursor_b = cursor_a = 0;
         size_t i = 0;
@@ -413,11 +477,16 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -433,26 +502,84 @@ public:
     rowboxarrayelem(rowbox* cbox_) : cbox(cbox_), offx(0), offy(0) {};
 };
 
+
+class monobox : public boxbase {
+public:
+    size_t row_cursor, col_cursor;
+    size_t row_cursor2, col_cursor2;
+    std::vector<std::vector<int32_t>> array;
+    uint32_t fs;
+    uint32_t flags = 0;
+    int32_t dx, dy;
+    int32_t mx, my;
+
+    monobox(size_t nrows, size_t ncols, int32_t c, size_t row_cursor_, size_t col_cursor_)
+     : boxbase(BNTYPE_MONO),
+       row_cursor(row_cursor_), col_cursor(col_cursor_),
+       row_cursor2(row_cursor_), col_cursor2(col_cursor_),
+       array(nrows, std::vector<int32_t>(ncols, c))
+    {
+    }
+
+    monobox(size_t row_cursor_, size_t col_cursor_,
+            size_t row_cursor2_, size_t col_cursor2_,
+            std::vector<std::vector<int32_t>> array_)
+     : boxbase(BNTYPE_GRID),
+       row_cursor(row_cursor_), col_cursor(col_cursor_),
+       row_cursor2(row_cursor2_), col_cursor2(col_cursor2_),
+       array(array_)
+    {
+    }
+
+    void print(size_t indent, int32_t offx, int32_t offy);
+    void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
+    void draw_pre(boxdrawarg ma);
+    void draw_main(boxdrawarg ma);
+    void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
+    void set_scolor(bsymer* B);
+    void insert_char(int32_t c);
+    visitRet visit(visitArg m);
+    moveRet move(boxbase*&b, moveArg m);
+    insertRet insert(boxbase*&b, insertArg m);
+    removeRet remove(boxbase*&b, removeArg m);
+    ex get_ex();
+
+    void delete_selection();
+};
+
+
 class cellbox : public boxbase {
 public:
     rowboxarrayelem body, label;
+    monobox* mexpr;
+    int32_t bracket_offy;
+    int32_t bracket_sizey;
     cellType celltype;
     int32_t cursor; // 0 -> body, 1->label
+    uint32_t flags;
 
     cellbox(rowbox * body_, cellType celltype_)
       : boxbase(BNTYPE_CELL),
         body(body_),
         label(nullptr),
+        mexpr(nullptr),
         celltype(celltype_),
-        cursor(0)
+        cursor(0),
+        flags(0)
     {};
 
-    cellbox(rowbox * body_, rowbox * label_, cellType celltype_)
+    cellbox(rowbox * body_, rowbox * label_, monobox* mexpr_, cellType celltype_)
       : boxbase(BNTYPE_CELL),
         body(body_),
         label(label_),
+        mexpr(mexpr_),
         celltype(celltype_),
-        cursor(0)
+        cursor(0),
+        flags(0)
     {};
 
     ~cellbox()
@@ -460,62 +587,160 @@ public:
         delete body.cbox;
         if (label.cbox)
             delete label.cbox;
+        if (mexpr)
+            delete mexpr;
     }
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
+
+    void toggle_cell_expr();
 };
 
 
-class cellboxarrayelem {
+class cellarrayelem {
 public:
-    cellbox* cbox;
+    boxbase* cbox; // cellbox or cellgroupbox
     int32_t offx, offy;
 
-    cellboxarrayelem() : cbox(nullptr), offx(0), offy(0) {};
-    cellboxarrayelem(cellbox* cbox_) : cbox(cbox_), offx(0), offy(0) {};
+    cellarrayelem() : cbox(nullptr), offx(0), offy(0) {};
+    cellarrayelem(boxbase* cbox_) : cbox(cbox_), offx(0), offy(0) {};
 };
 
+class cellgroupbox : public boxbase {
+public:
+    std::vector<cellarrayelem> child;
+
+    cellgroupbox(int32_t size)
+         : boxbase(BNTYPE_CELLGROUP)
+    {
+        child.resize(size);
+    };
+
+    ~cellgroupbox()
+    {
+        for (auto& i : child)
+            delete i.cbox;
+    }
+
+    void delete_selection() {assert(false);};
+    void key_shiftenter(notebook* nb) {assert(false);};
+
+    void print(size_t indent, int32_t offx, int32_t offy);
+    void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T) {assert(false);};
+    void draw_pre(boxdrawarg ma);
+    void draw_main(boxdrawarg ma);
+    void draw_post(boxdrawarg ma);
+    boxbase * copy() {assert(false); return nullptr;};
+    void key_copy(boxbase*&b) {assert(false);};
+    void key_paste(boxbase*&b) {assert(false);};
+    void set_scolor(bsymer* B) {assert(false);};
+    void insert_char(int32_t c) {assert(false);};
+    visitRet visit(visitArg m);
+    moveRet move(boxbase*&b, moveArg m) {assert(false); return moveret_OK;};
+    insertRet insert(boxbase*&b, insertArg m) {assert(false); return insertret_Done;};
+    removeRet remove(boxbase*&b, removeArg m) {assert(false); return removeret_OK;};
+    ex get_ex();
+};
 
 class rootbox : public boxbase {
 public:
-    int32_t cursor_a, cursor_b; // through: a < n, b > n. selection: a <= n, b <= n
-    std::vector<cellboxarrayelem> childcells;
+    std::vector<int32_t> cursor_a, cursor_b, cursor_t, cursor_s; // through to cell: b empty. cell section: b not empty
+    std::vector<cellarrayelem> child;
+
+
+    boxbase* _us();
+    int32_t _pi();
+    boxbase* _parent();
+    int32_t _gpi();
+    boxbase* _gparent();
+    void _up1();
+    void _deleteup1();
+    void _down1(int32_t a);
+    boxbase* _remove(int32_t idx);
+    boxbase* _removerange(int32_t start, int32_t end);
+    void _insert(boxbase* newchild);
+    void _insertup1(boxbase* newparent, int32_t idx);
+    void cell_insert(boxbase* c);
+    void _fix_cell_insert();
+    void _invalidate_downto(size_t n) {return;};
+    void cell_delete();
+    boxbase* cell_remove();
+    bool goto_next_cellbreak();
+    bool goto_prev_cellbreak();
+    bool goto_first_cellbreak();
+    void _cell_remove_sels(boxbase * r, std::vector<int32_t>&s, size_t i);
+    void _cell_remove_selt(boxbase * before, boxbase * after, std::vector<int32_t>&t, size_t i);
+    boxbase* _cell_remove_selection(std::vector<int32_t>&s, std::vector<int32_t>&t, size_t i);
+    void makecell(cellType t);
+
+    void erase_cell_mark(uint32_t mask);
+
+    void print_cell(cellbox* c);
+
 
     rootbox()
       : boxbase(BNTYPE_ROOT)
     {};
 
+    rootbox(int32_t size, int32_t cursor_a_, int32_t cursor_b_)
+         : boxbase(BNTYPE_ROOT)
+    {
+        child.resize(size);
+        cursor_a.push_back(cursor_a_);
+        if (cursor_b_ <= size)
+            cursor_b.push_back(cursor_b_);
+    };
+
     ~rootbox()
     {
-        for (auto& i : childcells)
+        for (auto& i : child)
             delete i.cbox;
     }
 
-    void delete_selection();
-    void key_shiftenter(notebook* nb);
-
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
+
+    void delete_selection();
+    void key_shiftenter(notebook* nb);
+    void toggle_cell_expr();
 };
+
+
+int32_t childlen(boxbase* b);
+boxbase* childat(boxbase* b, size_t i);
+int32_t offyat(boxbase* b, size_t i);
+int32_t offxat(boxbase* b, size_t i);
+
 
 
 class subscriptbox : public boxbase {
@@ -528,11 +753,16 @@ public:
     }
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -549,11 +779,16 @@ public:
     }
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -572,11 +807,16 @@ public:
     }
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -604,11 +844,16 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -626,11 +871,16 @@ public:
     }
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void insert_char(int32_t c);
     void set_scolor(bsymer* B);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -649,11 +899,16 @@ public:
     }
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void insert_char(int32_t c);
     void set_scolor(bsymer* B);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -680,11 +935,16 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -711,11 +971,16 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -744,11 +1009,16 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
@@ -769,6 +1039,14 @@ public:
     {
     }
 
+    gridbox(std::vector<std::vector<rowboxarrayelem>> array_, size_t row_cursor_, size_t col_cursor_)
+     : boxbase(BNTYPE_GRID),
+       row_cursor(row_cursor_), col_cursor(col_cursor_),
+       row_cursor2(row_cursor_), col_cursor2(col_cursor_),
+       array(array_)
+    {
+    }
+
     ~gridbox()
     {
         for (auto i = array.begin(); i != array.end(); ++i)
@@ -778,17 +1056,21 @@ public:
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
-
 
 class graphics3dbox : public boxbase {
 public:
@@ -854,300 +1136,30 @@ int64_t fxn_evals, grad_evals;
 
     void print(size_t indent, int32_t offx, int32_t offy);
     void measure(boxmeasurearg ma);
+    void get_cursor(aftransform * T);
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
+    boxbase * copy();
+    void key_copy(boxbase*&b);
+    void key_paste(boxbase*&b);
     void set_scolor(bsymer* B);
     void insert_char(int32_t c);
+    visitRet visit(visitArg m);
     moveRet move(boxbase*&b, moveArg m);
     insertRet insert(boxbase*&b, insertArg m);
     removeRet remove(boxbase*&b, removeArg m);
     ex get_ex();
 };
 
-
-
-/*
-*********************** old legacy interface ***********************************
-
-    a "box" is either:
-        (even) a pointer to a boxnode/boxchar/...
-                or
-        (odd) an immediate compression of a boxchar
-
-    on a 64 bit system the box type should be passed and returned as a native type (i.e. in registers)
-*/
-
-typedef struct _boxheader {
-    int32_t type, centery;
-    int32_t sizex, sizey;
-} boxheader;
-
-typedef union _box {
-    boxheader * ptr;
-    uint64_t imm;   // we need all 64 bits
-} box;
-
-
-typedef struct _boxarrayelem {
-    box child;
-    int32_t offx, offy;
-} boxarrayelem;
-
-/* general node with any number of children */
-typedef struct _boxnode {
-    boxheader header;
-                // BNTYPE_GRID  BNTYPE_ROW  BNTYPE_CELLGROUP    BNTYPE_CELL     BNTYPE_FRAC     BNTYPE_SQRT     BNTYPE_ROT       BNTYPE_TABVIEW
-    uint32_t extra0; // # rows       font                            style      font            font            modified angle   current view idx
-    uint32_t extra1; // # cols       flags       flags               flags                                      original angle
-    int32_t len, alloc;
-    er expr;
-    boxarrayelem * array;
-} boxnode;
-
-/* a simply lowly character, atomic */
-typedef struct {
-    boxheader header;
-} boxchar;
-
-/* 3d graphics, atomic */
-typedef struct {
-    boxheader header;
-//    graphics3d plot;
-} boxplot3d;
-typedef boxplot3d boxplot3d_t[1];
-
-/* array of monospaced characters, atomic */
-typedef struct {
-    boxheader header;
-    monotext text;
-} boxtext;
-
-
-extern boxheader box_null;
-
-inline bool bis_ui(box b)     {return 0 != (b.imm&1);}
-inline bool bis_ptr(box b)    {return 0 == (b.imm&1);}
-inline uint64_t   bto_ui(box b)     {assert(bis_ui(b)); return b.imm;}
-inline boxheader* bto_ptr(box b)    {assert(bis_ptr(b)); return reinterpret_cast<boxheader*>(b.ptr);}
-inline boxnode*   bto_node(box b)   {assert(bis_ptr(b)); assert(bto_ptr(b)->type < BNTYPE_NULLER); return reinterpret_cast<boxnode*>(b.ptr);}
-inline boxchar*   bto_pchar(box b)  {assert(bis_ptr(b)); assert(bto_ptr(b)->type >= 0); return reinterpret_cast<boxchar*>(b.ptr);}
-inline boxtext*   bto_text(box b)   {assert(bis_ptr(b)); assert(bto_ptr(b)->type < 0); return reinterpret_cast<boxtext*>(b.ptr);}
-//inline boxplot2d* bto_plot2(box b)  {return reinterpret_cast<boxplot2d*>(b);}
-//inline boxplot3d* bto_plot3(box b)  {return reinterpret_cast<boxplot3d*>(b);}
-
-inline box bfrom_imm(uint64_t i) {box b; b.imm = i; return b;}
-inline box bfrom_ptr(boxheader* p) {box b; b.ptr = reinterpret_cast<boxheader *>(p); return b;}
-inline box bfrom_node(boxnode* p) {box b; b.ptr = reinterpret_cast<boxheader *>(p); return b;}
-
-//inline void bset(box &a, box b) {a.imm = b.imm;} // should copy everything :-)
-
-inline bool bare_same(box b, box c) {return bis_ui(b) == bis_ui(c) && (bis_ui(b) ? b.imm == c.imm : b.ptr == c.ptr);}
-inline bool bis_special(box b){return bis_ptr(b) && bto_ptr(b)->type > BNTYPE_NULLER && bto_ptr(b)->type < 0;}
-inline bool bis_node(box b)   {return bis_ptr(b) && bto_ptr(b)->type < BNTYPE_NULLER;}
-inline bool bis_char(box b)                     {return bis_ui(b) || bto_ptr(b)->type >= 0;}
-inline bool bis_char(box b, char16_t c1)        {return bis_ui(b) ? (char16_t((bto_ui(b)>>32) & 65535) == c1) 
-                                                                  : (char16_t((bto_ptr(b)->type) & 65535) == c1);}
-inline bool bis_char(box b, char16_t c1, char16_t c2) {return bis_ui(b) ? ((char16_t((bto_ui(b)>>32) & 65535) == c1) || (char16_t((bto_ui(b)>>32) & 65535) == c2))
-                                                                        : ((char16_t((bto_ptr(b)->type) & 65535) == c1) || (char16_t((bto_ptr(b)->type) & 65535) == c2));}
-inline bool bptr_isleaf(box b)  {return bto_ptr(b)->type >= BNTYPE_NULLER;}
-inline bool bptr_isnode(box b)  {return bto_ptr(b)->type < BNTYPE_NULLER;}
-inline int32_t btype(box b)       {return bis_ui(b) ? bto_ui(b)>>32 : bto_ptr(b)->type;}
-inline int32_t bui_sizex(box b)   {return (bto_ui(b)>>22)&0x03FF;} // 10 bits
-inline int32_t bui_sizey(box b)   {return (bto_ui(b)>> 1)&0x07FF;} // 11 bits
-inline int32_t bui_centery(box b) {return (bto_ui(b)>>12)&0x03FF;} // 10 bits
-inline int32_t bui_type(box b)    {return (bto_ui(b)>>32);}
-inline int32_t bui_lextype(box b) {return (bto_ui(b)>>48)&255;}
-inline int32_t bui_symtype(box b) {return (bto_ui(b)>>56)&255;}
-inline box bui_addlextype(box b, uint64_t t)
-{
-    box c;
-    c.imm = (bto_ui(b) & 0x0FFFFFFFFFFFFULL) + (t << 48);
-    return c;
-}
-inline box bui_addsymtype(box b, uint64_t t)
-{
-    box c;
-    c.imm = (bto_ui(b) & 0x0FFFFFFFFFFFFFFULL) + (t << 56);
-    return c;
-}
-inline box bchar_addsymtype(box b, uint64_t t)
-{
-    assert(bis_char(b));
-    if (bis_ui(b))
-    {
-        return bui_addsymtype(b, t);
-    }
-    else
-    {
-        bto_ptr(b)->type = (bto_ptr(b)->type & 0x0FFFFFFULL) + (t << 24);
-        return b;
-    }
-}
-inline int bchar_type(box b)  {assert(btype(b) >= 0); return btype(b);}
-inline int bchar_lextype(box b) {assert(btype(b) >= 0); return (btype(b) >> 16)&255;}
-inline int bchar_symtype(box b) {assert(btype(b) >= 0); return (btype(b) >> 24)&255;}
-inline int bptr_type(box b)     {return bto_ptr(b)->type;}
-inline int bptr_sizex(box b)    {return bto_ptr(b)->sizex;}
-inline int bptr_sizey(box b)    {return bto_ptr(b)->sizey;}
-inline int bptr_centery(box b)  {return bto_ptr(b)->centery;}
-
-inline int bnode_type(box b)    {return bto_node(b)->header.type;}
-inline int bnode_sizex(box b)   {return bto_node(b)->header.sizex;}
-inline int bnode_sizey(box b)   {return bto_node(b)->header.sizey;}
-inline int bnode_centery(box b) {return bto_node(b)->header.centery;}
-inline int bnode_extra0(box b)  {return bto_node(b)->extra0;}
-inline int bnode_extra1(box b)  {return bto_node(b)->extra1;}
-inline int bnode_len(box b)     {return bto_node(b)->len;}
-inline int bnode_alloc(box b)   {return bto_node(b)->alloc;}
-inline box bnode_child(box b, int i){return bto_node(b)->array[i].child;}
-inline int bnode_offx(box b, int i) {return bto_node(b)->array[i].offx;}
-inline int bnode_offy(box b, int i) {return bto_node(b)->array[i].offy;}
-
-inline int boxnode_type(boxnode* b)    {return b->header.type;}
-inline int boxnode_sizex(boxnode* b)   {return b->header.sizex;}
-inline int boxnode_sizey(boxnode* b)   {return b->header.sizey;}
-inline int boxnode_centery(boxnode* b) {return b->header.centery;}
-inline er  boxnode_expr(boxnode* b)  {return b->expr;}
-inline int boxnode_extra0(boxnode* b)  {return b->extra0;}
-inline int boxnode_extra1(boxnode* b)  {return b->extra1;}
-inline int boxnode_len(boxnode* b)     {return b->len;}
-inline int boxnode_alloc(boxnode* b)   {return b->alloc;}
-inline box boxnode_child(boxnode* b, int i){return b->array[i].child;}
-inline int boxnode_offx(boxnode* b, int i) {return b->array[i].offx;}
-inline int boxnode_offy(boxnode* b, int i) {return b->array[i].offy;}
-
-
-int boxrow_child_sizey(boxnode * r, int i);
-int boxrow_child_centery(boxnode * r, int i);
-
-inline void bget_header(int32_t&type, int32_t&sizex, int32_t&sizey, int32_t&centery, box b)
-{
-    if (bis_ptr(b))
-    {
-        type = bptr_type(b);
-        sizex = bptr_sizex(b);
-        sizey = bptr_sizey(b);
-        centery = bptr_centery(b);
-    }
-    else
-    {
-        type = bui_type(b);
-        sizex = bui_sizex(b);
-        sizey = bui_sizey(b);
-        centery = bui_centery(b);
-    }
-}
-
-void box_invalidate_us(box us);
-void box_invalidate_all(box us);
-
-void boxplot3d_render(box us);
-void boxplot2d_render(box us);
-
-void boxnode_print(box cursorbox, box b, int depth);
-
-
-box boxchar_set_sizes(box c, int32_t sizex, int32_t sizey, int32_t centery);
-box boxchar_create(int32_t type);
-box boxchar_create(int32_t type, int32_t sizex);
-box boxchar_createbig(int32_t type, int32_t sizex, int32_t sizey, int32_t centery);
-boxnode * boxnode_create(int type, int alloc);
-box boxnode_make(int type, box b0);
-box boxnode_make(int type, box b0, box b1);
-box boxnode_make(int type, box b0, box b1, box b2);
-box boxnode_copy(box b);
-box boxnode_copyrange(boxnode * org, int start, int end);
-
-void box_delete(box b);
-void boxptr_delete(boxheader * b);
-void box_node_delete(boxnode * b);
-
-void boxnode_append(boxnode * parent, box child);
-void boxnode_append_char(boxnode * parent, int c);
-void boxnode_append_cstr(boxnode * parent, const char * cs);
-void boxnode_append_boxstr(boxnode * Parent, const char16_t * cs);
-void boxnode_append_string(boxnode * parent, const std::string& s, bool esc);
-box boxnode_make_from_cstr(const char* s);
-box boxnode_make_from_string(const std::string& s);
-
-void boxnode_print(box cursorbox, box b, int depth);
-box  boxnode_removerange(boxnode * org, int start, int end);
-void boxnode_splice(boxnode * a, int idx, boxnode * b);
-void boxnode_splice_row(boxnode * a, int idx, boxnode * b);
-box  boxnode_split_row(boxnode * org, int idx);
-box  boxnode_splitrange_row(boxnode * org, int start, int end);
-void boxnode_join_tworows(boxnode * a, boxnode * b);
-void boxnode_append_row(boxnode * a, boxnode * b);
-void boxnode_deleterange(box org, int start, int end);
-box  boxnode_replace(boxnode * parent, int idx, box newchild);
-box  boxnode_remove(boxnode * org, int idx);
-void boxnode_insert(boxnode * parent, box child, int idx);
-
-
-inline box boxnode_copyrange(box org, int start, int end) {
-    return boxnode_copyrange(bto_node(org), start, end);}
-
-
-inline void boxnode_join_tworows(box a, box b) {
-     return boxnode_join_tworows(bto_node(a), bto_node(b));}
-
-inline void boxnode_append(box parent, box child) {
-     return boxnode_append(bto_node(parent), child);}
-inline box  boxnode_replace(box parent, int idx, box newchild) {
-     return boxnode_replace(bto_node(parent), idx, newchild);}
-inline box  boxnode_remove(box org, int idx) {
-     return boxnode_remove(bto_node(org), idx);}
-inline void box_node_delete(box b) {
-     return box_node_delete(bto_node(b));}
-inline box  boxnode_removerange(box org, int start, int end) {
-     return boxnode_removerange(bto_node(org), start, end);}
-inline box  boxnode_split_row(box org, int idx) {
-     return boxnode_split_row(bto_node(org), idx);}
-inline void boxnode_insert(box parent, box child, int idx) {
-     return boxnode_insert(bto_node(parent), child, idx);}
-inline box  boxnode_splitrange_row(box org, int start, int end) {
-     return boxnode_splitrange_row(bto_node(org), start, end);}
-inline void boxnode_splice(box a, int idx, box b) {
-     return boxnode_splice(bto_node(a), idx, bto_node(b));}
-inline void boxnode_splice_row(box a, int idx, box b) {
-     return boxnode_splice_row(bto_node(a), idx, bto_node(b));}
-
-
-box boxplot3d_create();
-
-
-box boxtext_create();
-void boxtext_insert_tab(boxtext * us);
-void boxtext_insert_char(boxtext * us, char16_t c);
-void boxtext_insert_newline(boxtext * us);
-void boxtext_insert_string(boxtext * us, const unsigned char * s, int sn);
-int boxtext_deletekey(boxtext * us);
-int boxtext_backspace(boxtext * us);
-int boxtext_left(boxtext * us);
-int boxtext_right(boxtext * us);
-int boxtext_key_up(boxtext * us);
-int boxtext_key_down(boxtext * us);
-void boxtext_end(boxtext * us);
-void boxtext_start(boxtext * us);
-void boxtext_key_end(boxtext * us);
-void boxtext_key_home(boxtext * us);
-
-inline void boxtext_insert_tab(box us) {return boxtext_insert_tab(bto_text(us));}
-inline void boxtext_insert_char(box us, char16_t c) {return boxtext_insert_char(bto_text(us), c);}
-inline void boxtext_insert_newline(box us) {return boxtext_insert_newline(bto_text(us));}
-inline void boxtext_insert_string(box us, const unsigned char * s, int sn) {return boxtext_insert_string(bto_text(us), s, sn);}
-inline int boxtext_deletekey(box us) {return boxtext_deletekey(bto_text(us));}
-inline int boxtext_backspace(box us) {return boxtext_backspace(bto_text(us));}
-inline int boxtext_left(box us) {return boxtext_left(bto_text(us));}
-inline int boxtext_right(box us) {return boxtext_right(bto_text(us));}
-inline int boxtext_key_up(box us) {return boxtext_key_up(bto_text(us));}
-inline int boxtext_key_down(box us) {return boxtext_key_down(bto_text(us));}
-inline void boxtext_end(box us) {return boxtext_end(bto_text(us));}
-inline void boxtext_start(box us) {return boxtext_start(bto_text(us));}
-inline void boxtext_key_end(box us) {return boxtext_key_end(bto_text(us));}
-inline void boxtext_key_home(box us) {return boxtext_key_home(bto_text(us));}
-
-
 int escape_seq_to_action(const char * s);
+rowbox * steal_rowbox(rowbox * row, int32_t a, int32_t b);
+bool made_into_placeholder(rowbox * r);
 
+void drawtrect(double minx, double maxx, double miny, double maxy, uint32_t color, aftransform*T);
+void drawbtrect(double blend, double minx, double maxx, double miny, double maxy, uint32_t color, aftransform*T);
+void drawtline(double X1, double Y1, double X2, double Y2, double e, uint32_t color, aftransform*T);
+void drawtlines(double * coords, size_t nlines, double e, uint32_t color, aftransform*T);
+void drawtchar(uint32_t fs, char16_t c, int32_t sizex, int32_t sizey, int32_t offx, int32_t offy, uint32_t color, aftransform * T);
+void drawbtchar(double blend, uint32_t fs, char16_t c, int32_t sizex, int32_t sizey, int32_t offx, int32_t offy, uint32_t color, aftransform * T);
+void _draw_cellgroup_bracket(boxbase * us, boxdrawarg da);

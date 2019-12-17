@@ -10,11 +10,13 @@
 #include "arithmetic.h"
 #include "polynomial.h"
 
+#ifndef NOFACTOR
+
 #include <flint/fmpq_mpoly_factor.h>
 #include <flint/profiler.h>
 #include <flint/fmpz.h>
 
-#include "djratNEW.h"
+#include "djrat.h"
 
 ex eval_fakeabs(bool&switched, ex E)
 {
@@ -541,7 +543,7 @@ int poly_set_any_ex(poly & p, er e, const xfmpz & m)
             r = poly_set_any_ex(q, echild(e,i), m);
             if (r != 0)
             {
-std::cout << " from " << ex_tostring(e) << " failed 5" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 5" << std::endl;
                 return r;
             }
             poly_append(p, q);
@@ -551,18 +553,18 @@ timeit_t timer;
 timeit_start(timer);
         poly_sort_terms(p);
 timeit_stop(timer);
-std::cout << "sort time: " << timer->wall << std::endl;
+//std::cout << "sort time: " << timer->wall << std::endl;
 
 
 timeit_start(timer);
         poly_combine_like_terms(p);
 timeit_stop(timer);
-std::cout << "combine time: " << timer->wall << std::endl;
+//std::cout << "combine time: " << timer->wall << std::endl;
 
         r = poly_reduce_mod(p, m);
         if (r != 0)
         {
-std::cout << " from " << ex_tostring(e) << " failed 6" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 6" << std::endl;
             return r;
         }
 
@@ -581,7 +583,7 @@ std::cout << " from " << ex_tostring(e) << " failed 6" << std::endl;
             r = poly_set_any_ex(q, echild(e,i), m);
             if (r != 0)
             {
-std::cout << " from " << ex_tostring(e) << " failed 4" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 4" << std::endl;
                 return r;
             }
             poly_mul(t, p, q);
@@ -591,7 +593,7 @@ std::cout << " from " << ex_tostring(e) << " failed 4" << std::endl;
         r = poly_reduce_mod(p, m);
         if (r != 0)
         {
-std::cout << " from " << ex_tostring(e) << " failed 7" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 7" << std::endl;
             return r;
         }
 
@@ -607,13 +609,13 @@ std::cout << " from " << ex_tostring(e) << " failed 7" << std::endl;
         r = poly_set_any_ex(q, echild(e,1), m);
         if (r != 0)
         {
-std::cout << " from " << ex_tostring(e) << " failed 3" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 3" << std::endl;
             return r;
         }
         r = poly_pow(p, q, fmpz_get_ui(eint_data(echild(e,2))));
         if (r != 0)
         {
-std::cout << " from " << ex_tostring(e) << " failed 2" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 2" << std::endl;
             return r;
         }
 
@@ -621,7 +623,7 @@ std::cout << " from " << ex_tostring(e) << " failed 2" << std::endl;
         r = poly_reduce_mod(p, m);
         if (r != 0)
         {
-std::cout << " from " << ex_tostring(e) << " failed 8" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 8" << std::endl;
             return r;
         }
 
@@ -631,7 +633,7 @@ std::cout << " from " << ex_tostring(e) << " failed 8" << std::endl;
     }
     else
     {
-std::cout << " from " << ex_tostring(e) << " failed 1" << std::endl;
+//std::cout << " from " << ex_tostring(e) << " failed 1" << std::endl;
         return 1;
     }
 }
@@ -717,7 +719,7 @@ int poly_to_nmod_mpoly(nmod_mpoly_t a, const nmod_mpoly_ctx_t ctx, const poly & 
         }
         else
         {
-std::cout << "poly_to_nmod_mpoly failing" << std::endl;
+//std::cout << "poly_to_nmod_mpoly failing" << std::endl;
             return 1;
         }
 
@@ -1396,16 +1398,16 @@ ratpoly_error ratpoly_mul(R & a, R & b, R & c)
 template <class R>
 ratpoly_error ratpoly_pow(R & a, const fmpz_t power)
 {
-std::cout << "ratpoly_pow a: " << ratpoly_tostring<R>(a) << std::endl;
+//std::cout << "ratpoly_pow a: " << ratpoly_tostring<R>(a) << std::endl;
     R::polyfactor_pow(a.data, power, a.ctx);
-std::cout << "ratpoly_pow a: " << ratpoly_tostring<R>(a) << std::endl;
+//std::cout << "ratpoly_pow a: " << ratpoly_tostring<R>(a) << std::endl;
     return rperror_ok;
 }
 
 template <class R>
 ratpoly_error ratpoly_factor(R & a, R & b)
 {
-std::cout << "ratpoly_factor b: " << ratpoly_tostring<R>(b) << std::endl;
+//std::cout << "ratpoly_factor b: " << ratpoly_tostring<R>(b) << std::endl;
 
     if (b.vars.empty())
 	{
@@ -1419,14 +1421,14 @@ std::cout << "ratpoly_factor b: " << ratpoly_tostring<R>(b) << std::endl;
 	    R::polyfactor_factorize(a.data, b.data, a.ctx);
 	}
 
-std::cout << "ratpoly_factor a: " << ratpoly_tostring<R>(b) << std::endl;
+//std::cout << "ratpoly_factor a: " << ratpoly_tostring<R>(b) << std::endl;
     return rperror_ok;
 }
 
 template <class R>
 ratpoly_error ratpoly_expand_numerator(R & a, R & b)
 {
-std::cout << "ratpoly_expand_numerator b: " << ratpoly_tostring<R>(b) << std::endl;
+//std::cout << "ratpoly_expand_numerator b: " << ratpoly_tostring<R>(b) << std::endl;
 
     if (b.vars.empty())
 	{
@@ -1440,7 +1442,7 @@ std::cout << "ratpoly_expand_numerator b: " << ratpoly_tostring<R>(b) << std::en
 	    R::polyfactor_expand_numerator(a.data, b.data, a.ctx);
 	}
 
-std::cout << "ratpoly_expand_numerator a: " << ratpoly_tostring<R>(a) << std::endl;
+//std::cout << "ratpoly_expand_numerator a: " << ratpoly_tostring<R>(a) << std::endl;
     return rperror_ok;
 }
 
@@ -1449,7 +1451,7 @@ std::cout << "ratpoly_expand_numerator a: " << ratpoly_tostring<R>(a) << std::en
 template <class R>
 ratpoly_error ratpoly_set_ex(R & p, er e, uint32_t flags)
 {
-std::cout << "ratpoly_set_ex e: " << ex_tostring_full(e) << std::endl;
+//std::cout << "ratpoly_set_ex e: " << ex_tostring_full(e) << std::endl;
 
     ratpoly_error r;
     if (!eis_node(e))
@@ -1775,11 +1777,23 @@ ex dcode_sExpand(er e)
 
         if (fmpz_is_zero(m.data))
         {
+//timeit_t timer;
             fmpq_ratpoly p(0);
+
+//timeit_start(timer);
             r = ratpoly_set_ex<fmpq_ratpoly>(p, echild(e,1), RATPOLY_FLAG_EXPAND);
+//timeit_stop(timer);
+//std::cout << "ratpoly_set_ex time: " << timer->wall << std::endl;
+
             if (r != rperror_ok)
                 return _handle_ratpoly_error(e, r);
-            return ratpoly_get_ex<fmpq_ratpoly>(p);
+
+//timeit_start(timer);
+            ex t = ratpoly_get_ex<fmpq_ratpoly>(p);
+//timeit_stop(timer);
+//std::cout << "ratpoly_get_ex time: " << timer->wall << std::endl;
+
+            return t;
         }
         else if (fmpz_abs_fits_ui(m.data))
         {
@@ -1818,7 +1832,7 @@ ex dcode_sFactorTerms(er e)
 
 ex dcode_sPolynomialGCD(er e)
 {
-std::cout << "dcode_sPolynomialGCD: " << ex_tostring_full(e) << std::endl;
+//std::cout << "dcode_sPolynomialGCD: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_sPolynomialGCD.get()));
     wex optModulus(emake_cint(0));
     wex optExtension(gs.sym_sNone.copy());
@@ -1943,6 +1957,96 @@ ex dcode_sFactor(er e)
     else
     {
         _gen_message(echild(e,0), "bmod", NULL, ecopychild(e,0));
+        return ecopy(e);
+    }
+}
+
+#else
+
+ex dcode_sCancel(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sDenominator(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sExpand(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sFactorTerms(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sFactor(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sNumerator(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sPolynomialGCD(er e)
+{
+    return ecopy(e);
+}
+
+ex dcode_sTogether(er e)
+{
+    return ecopy(e);
+}
+
+#endif
+
+ex dcode_sCoefficientRules(er e)
+{
+//std::cout << "dcode_sTogether: " << ex_tostring_full(e) << std::endl;
+    assert(ehas_head_sym(e, gs.sym_sCoefficientRules.get()));
+
+    if (elength(e) == 2 && ehas_head_sym(echild(e,2), gs.sym_sList.get()))
+    {
+        poly p(elength(echild(e,2)));
+        if (!ex_to_polynomial(p, echild(e,1), echild(e,2)))
+        {
+            return ecopy(e);
+        }
+//        compiledpoly prog;
+//        compile_poly(prog, p);
+//        std::cout << "compiled: " << prog.tostring() << std::endl;
+/*
+        std::vector<wex> stack;
+        for (size_t i = 0; i < p.nvars; i++)
+        {
+            stack.push_back(emake_node(gs.sym_sSlot.copy(), emake_int_ui(i+1)));
+        }
+        stack.push_back(wex(gs.sym_sNull.copy()));
+        stack.push_back(wex(gs.sym_sNull.copy()));
+        stack.push_back(wex(gs.sym_sNull.copy()));
+        stack.push_back(wex(gs.sym_sNull.copy()));
+        eval_poly_ex(stack, prog.prog.data(), prog.prog.size());
+std::cout << "output from program: " << ex_tostring(stack[p.nvars].get()) << std::endl;
+*/
+        uex r(gs.sym_sList.get(), p.size());
+        for (size_t i = 0; i < p.size(); i++)
+        {
+            uex ve(gs.sym_sList.get(), p.vars.size());
+            for (size_t j = 0; j < p.vars.size(); j++)
+            {
+                ve.push_back(emake_int_copy(p.exps.data()[i*p.vars.size() + j].data));
+            }
+            r.push_back(emake_node(gs.sym_sRule.copy(), ve.release(), p.coeffs[i].copy()));
+        }
+        return r.release();
+    }
+    else
+    {
         return ecopy(e);
     }
 }

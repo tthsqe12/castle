@@ -127,10 +127,9 @@ static ex _unique_symbol(er e)
     {
         std::string context;
 
-        const unsigned char * s = reinterpret_cast<const unsigned char *>(estr_string(e).c_str());
+        const char * s = estr_string(e).c_str();
         size_t sn = estr_string(e).size();
-        size_t si = 0;
-        while (si < sn)
+        for (size_t si = 0; si < sn;)
         {
             char16_t c;
             si += readonechar16(c, s + si);

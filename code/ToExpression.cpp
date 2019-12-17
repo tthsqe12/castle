@@ -13,20 +13,17 @@ ex dcode_sToExpression(er e)
         return _handle_message_argb(e, 1 + (3 << 8));
     }
 
-    int serror = 0;
-    std::vector<size_t> istack;
     std::vector<uex> vin;
+    syntax_report sr;
     bool toplevel = elength(e) < 2 || echild(e,2) == gs.sym_sInputForm.get();
-    ex_parse_exbox(vin, echild(e,1), toplevel, serror, istack);
-
-    if (serror)
+    ex_parse_exboxs(vin, echild(e,1), toplevel, sr);
+    if (sr.have_error())
     {
-        _gen_message(gs.sym_sGeneral.get(), "sntx", "Syntax error near `1`.", emake_str("???"));
+        _gen_message(gs.sym_sGeneral.get(), "sntx", "`1` near `2`.", sr.translate_error(), sr.near_error());
         return gs.sym_s$Failed.copy();
     }
     else
     {
-//std::cout << "ToExpression " << toplevel <<" parsed as " << exvec_tostring_full(vin) << std::endl;
         if (elength(e) >= 3)
         {
             return emake_node(ecopychild(e,3), vin);

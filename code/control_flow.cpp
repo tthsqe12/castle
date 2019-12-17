@@ -164,7 +164,15 @@ ex dcode_sReturn(er e)
 //std::cout << "dcode_sReturn: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_sReturn.get()));
 
-    return gs.sym_sNull.copy();
+    ex f = ecopy(e);
+    if (elength(e) < 2)
+    {
+        throw exception_sym_sReturn(f);
+    }
+    else
+    {
+        throw exception_sym_sReturn_2(f);
+    }
 }
 
 ex dcode_sFor(er e)
@@ -211,9 +219,7 @@ ex dcode_sFor(er e)
     }
     else
     {
-        ex t = emake_int_ui(elength(e));
-        _gen_message(gs.sym_sFor.get(), "argt", NULL, gs.sym_sFor.copy(), t, emake_cint(3), emake_cint(4));
-        return ecopy(e);
+        return _handle_message_argt(e, (3 << 0) + (4 << 8));
     }
 }
 
@@ -302,4 +308,34 @@ ex dcode_sCatch(er e)
         assert(ehas_head_sym_length(f.get(), gs.sym_sThrow.get(), 1));
         return f.copychild(1);
     }
+}
+
+class install_muffler {
+private:
+    size_t muffler_count;
+public:
+    install_muffler() {
+        gs.muffler_stack.push_back(emake_node(gs.sym_sList.copy()));
+        muffler_count = gs.muffler_stack.size();
+    }
+
+    ~install_muffler() {
+        assert(muffler_count == gs.muffler_stack.size());
+        gs.muffler_stack.pop_back();
+    }
+};
+
+ex dcode_sQuiet(er e)
+{
+//std::cout << "dcode_sQuiet: " << ex_tostring_full(e) << std::endl;
+    assert(ehas_head_sym(e, gs.sym_sQuiet.get()));
+
+    if (elength(e) != 1)
+    {
+        return _handle_message_argx1(e);
+    }
+
+    install_muffler M;
+    uex r(eval(ecopychild(e,1)));
+    return r.release();
 }

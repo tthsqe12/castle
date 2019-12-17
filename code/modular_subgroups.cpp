@@ -2333,18 +2333,18 @@ g = ModularSubgroups`Group[{1,2,3},{3,1,2}]
 */
 ex dcode_msGroup(er e)
 {
-std::cout << "dcode_msGroup: " << ex_tostring_full(e) << std::endl;
+//std::cout << "dcode_msGroup: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_msGroup.get()));
 
     if (elength(e) != 2)
     {
-std::cout << "Group bad args" << std::endl;
+//std::cout << "Group bad args" << std::endl;
         return ecopy(e);
     }
 
     if (espec_statusflags(e) & ESTATUSFLAG_VALIDQ)
     {
-std::cout << "Group valid" << std::endl;
+//std::cout << "Group valid" << std::endl;
         return ecopy(e);
     }
 
@@ -2352,19 +2352,19 @@ std::cout << "Group valid" << std::endl;
 
     if (!g.set_ex(e))
     {
-std::cout << "Group failed" << std::endl;
+//std::cout << "Group failed" << std::endl;
         return gs.sym_s$Failed.copy();
     }
 
     if (g.standardize())
     {
-ex r = g.get_ex();
-std::cout << "Group returning: " << ex_tostring_full(etor(r)) << std::endl;
+        ex r = g.get_ex();
+//std::cout << "Group returning: " << ex_tostring_full(etor(r)) << std::endl;
         return r;
     }
     else
     {
-std::cout << "Group unchanged" << std::endl;
+//std::cout << "Group unchanged" << std::endl;
         return ecopy(e);
     }
 }

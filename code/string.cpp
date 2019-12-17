@@ -91,9 +91,8 @@ ex dcode_sToCharacterCode(er e)
     {
         std::vector<wex> v;
         size_t n = eto_str(X)->string.size();
-        const unsigned char * a = (const unsigned char *) eto_str(X)->string.c_str();
-        size_t i = 0;
-        while(i < n)
+        const char * a = eto_str(X)->string.c_str();
+        for (size_t i = 0; i < n;)
         {
             char16_t c;
             i += readonechar16(c, a + i);
@@ -114,9 +113,8 @@ ex dcode_sToCharacterCode(er e)
             }
             std::vector<wex> v;
             size_t n = eto_str(Y)->string.size();
-            const unsigned char * a = (const unsigned char *) eto_str(Y)->string.c_str();
-            size_t i = 0;
-            while (i < n)
+            const char * a = eto_str(Y)->string.c_str();
+            for (size_t i = 0; i < n;)
             {
                 char16_t c;
                 i += readonechar16(c, a + i);

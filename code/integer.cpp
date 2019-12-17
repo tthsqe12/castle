@@ -225,7 +225,6 @@ ex dcode_sContinuedFraction(er e)
 }
 
 
-// TODO: eval has a bug with ChampernowneNumber[Unevaluated[List[a,b]]]
 ex dcode_sChampernowneNumber(er e)
 {
     if (elength(e) > 1)
@@ -263,21 +262,6 @@ ex ncode_sChampernowneNumber(er e, slong prec)
 
     if (fmpz_cmp_ui(B.data, 1) <= 0)
         return ecopy(e);
-
-/*
-				          k                           k
-				         b              1            b
-				 1 + --------- - ------------- - -----------
-				       k     2     k + 1     2    k + 1
-	b			     (b  - 1)    (b      - 1)    b      - 1
--------- - Sum[----------------------------------------------, {k, 1, Infinity}]
-       2                                     k
-(b - 1)                                k    b  - 1
-                                    k b  - -------
-                            b - 1           b - 1
-                     Power[b      , --------------]
-                                        b - 1
-*/
 
     xarb z, s, d, u, v;
     xfmpz a, t0, t1, t2, t3, t4, t6;
@@ -319,19 +303,19 @@ ex ncode_sChampernowneNumber(er e, slong prec)
         ulong w2 = mlog2u*fmpz_get_d(ck[k - 1].data);
         ulong w = 5 + (w1 > w2 ? w1 - w2 : 0);
         flint_bitcnt_t ckbits = fmpz_bits(ck[k - 1].data);
-        fmpz_pow_ui(a.data, B.data, k); 		// a = b^k
+        fmpz_pow_ui(a.data, B.data, k);
         fmpz_sub_ui(t0.data, a.data, 1);
         fmpz_mul(t1.data, t0.data, a.data);
-        fmpz_add_ui(t1.data, t1.data, 1); 		// t1 = a(a-1)+1
-        fmpz_mul(t2.data, t0.data, t0.data); 	// t2 = (a-1)^2
+        fmpz_add_ui(t1.data, t1.data, 1);
+        fmpz_mul(t2.data, t0.data, t0.data);
 		fmpz_divexact_ui(t0.data, t0.data, b - 1);
-        fmpz_mul(t3.data, t0.data, t0.data); 	// t3 = ((a-1)/(b-1))^2
+        fmpz_mul(t3.data, t0.data, t0.data);
         fmpz_mul(t0.data, a.data, B.data);
         fmpz_sub_ui(t0.data, t0.data, 1);
         fmpz_mul(t4.data, t0.data, a.data);
-        fmpz_add_ui(t4.data, t4.data, 1); 		// t4 = a(ab-1)+1
+        fmpz_add_ui(t4.data, t4.data, 1);
 		fmpz_divexact_ui(t0.data, t0.data, b - 1);
-        fmpz_mul(t6.data, t0.data, t0.data); 	// t6 = ((ab-1)/(b-1))^2
+        fmpz_mul(t6.data, t0.data, t0.data);
         fmpz_mul(t0.data, t2.data, t6.data);
         fmpz_mul(t2.data, t6.data, t1.data);
         fmpz_submul(t2.data, t3.data, t4.data);

@@ -377,10 +377,9 @@ public:
 
     void push_string(const std::string & ss)
     {
-        const unsigned char * s = reinterpret_cast<const unsigned char *>(ss.c_str());
+        const char * s = ss.c_str();
         size_t sn = ss.size();
-        size_t si = 0;
-        while (si < sn)
+        for (size_t si = 0; si < sn;)
         {
             char16_t c;
             si += readonechar16(c, s + si);
