@@ -9,12 +9,6 @@
 #include "arithmetic.h"
 #include "flint/arith.h"
 
-ex emake_nan_Infinity()
-{
-    return emake_nan(emake_node(gs.sym_sDirectedInfinity.copy(), emake_cint(1)));
-}
-
-
 ex dcode_sPrecision(er e)
 {
 //std::cout << "dcode_sPrecision: " << ex_tostring_full(e) << std::endl;
@@ -29,7 +23,7 @@ ex dcode_sPrecision(er e)
         return ecopy(e);
 
     if (!eis_real(x))
-        return emake_nan_Infinity();
+        return gs.const_infinity.copy();
 
     if (arb_contains_zero(ereal_data(x)))
         return emake_cint(0);
@@ -42,7 +36,7 @@ ex dcode_sPrecision(er e)
     arb_log_base_ui(ereal_data(z), ereal_data(z), 10, 32 + fmpz_bits(ARF_EXPREF(arb_midref(ereal_data(z)))));
     arb_add_error_2exp_si(ereal_data(z), -30);
     arb_neg(ereal_data(z), ereal_data(z));
-    return ereturn_real(z);
+    return efix_real(z);
 }
 
 ex dcode_sAccuracy(er e)
@@ -59,7 +53,7 @@ ex dcode_sAccuracy(er e)
         return ecopy(e);
 
     if (!eis_real(x))
-        return emake_nan_Infinity();
+        return gs.const_infinity.copy();
 
     ex z = emake_real();
     arb_get_rad_arb(ereal_data(z), ereal_data(x));
@@ -68,7 +62,7 @@ ex dcode_sAccuracy(er e)
     arb_log_base_ui(ereal_data(z), ereal_data(z), 10, 32 + fmpz_bits(ARF_EXPREF(arb_midref(ereal_data(z)))));
     arb_add_error_2exp_si(ereal_data(z), -30);
     arb_neg(ereal_data(z), ereal_data(z));
-    return ereturn_real(z);
+    return efix_real(z);
 }
 
 
@@ -300,7 +294,7 @@ try_again:
 
 std::cout << "using cur_prec = " << cur_prec << " for " << ex_tostring(e) << std::endl;
 
-    size_t len = elength(e);
+    ulong len = elength(e);
     ex h = eval_num(echild(e,0), cur_prec);
     uint32_t attr = enormalattr(etor(h));
     f.reset(nullptr);
@@ -327,7 +321,7 @@ std::cout << "using cur_prec = " << cur_prec << " for " << ex_tostring(e) << std
     else
     {
         uint32_t test = ATTR_NHoldFirst;
-        for (size_t i = 1; i <= len; i++)
+        for (ulong i = 1; i <= len; i++)
         {
             f.push_back((attr & test) ? ecopychild(e,i) : eval_num(echild(e,i), cur_prec));
             test = ATTR_NHoldRest;

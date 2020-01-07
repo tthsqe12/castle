@@ -15,9 +15,7 @@ ex scode_sAssociation(er e)
 
     er h = echild(e,0);
     if (elength(e) != 1 || !eis_hmap(h))
-    {
         return ecopy(e);
-    }
 
     wex key(ecopychild(e,1));
     auto it = ehmap_data(h).find(key);

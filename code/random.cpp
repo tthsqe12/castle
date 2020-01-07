@@ -112,7 +112,7 @@ ex dcode_sRandomInteger(er e)
 
         fmpz_add(eint_data(X), eint_data(X), eint_data(lower));
 
-        return ereturn_int(x.release());
+        return efix_int(x.release());
     }
     else
     {

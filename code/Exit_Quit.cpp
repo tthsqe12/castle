@@ -17,9 +17,9 @@ ex dcode_sExit_Quit(er e)
     }
     else
     {
-        if (eis_machine_int(echild(e,1)))
+        if (eis_intm(echild(e,1)))
         {
-            throw exception_exit(eget_machine_int(echild(e,1)));
+            throw exception_exit(eintm_get(echild(e,1)));
         }
         else
         {

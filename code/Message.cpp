@@ -209,6 +209,17 @@ void _gen_message(er x, const char * tag, const char * str, ex E1, ex E2, ex E3,
     eclear(dcode_sMessage(t.get()));
 }
 
+
+ex _handle_message_argct(er e)
+{
+	assert(eis_node(e));
+	assert(eis_sym(echild(e,0)));
+    ex t = emake_int_ui(elength(e));
+    _gen_message(echild(e,0), "argct", nullptr, ecopychild(e,0), t);
+    return ecopy(e);
+}
+
+
 ex _handle_message_argx(er e, uint32_t n1)
 {
 	assert(eis_node(e));
@@ -256,8 +267,7 @@ ex _handle_message_argm(er e, uint32_t n1)
 	assert(eis_node(e));
 	assert(eis_sym(echild(e,0)));
     ex t = emake_int_ui(elength(e));
-    ex t1 = emake_cint(n1); // n1 should be small
-    _gen_message(echild(e,0), "argm", nullptr, ecopychild(e,0), t, t1);
+    _gen_message(echild(e,0), "argm", nullptr, ecopychild(e,0), t, emake_cint(n1));
     return ecopy(e);
 }
 
@@ -265,10 +275,42 @@ ex _handle_message_sym(er e, uint32_t n1)
 {
 	assert(eis_node(e));
 	assert(eis_sym(echild(e,0)));
-    ex t = emake_cint(n1); // n1 should be small
-    _gen_message(echild(e,0), "sym", nullptr, ecopychild(e,n1), t);
+    _gen_message(echild(e,0), "sym", nullptr, ecopychild(e,n1), emake_cint(n1));
     return ecopy(e);
 }
+
+ex _handle_message_intpm(er e, uint32_t n1)
+{
+	assert(eis_node(e));
+	assert(eis_sym(echild(e,0)));
+    _gen_message(echild(e,0), "intpm", NULL, ecopy(e), emake_cint(n1));
+    return ecopy(e);
+}
+
+ex _handle_message_intnm(er e, uint32_t n1)
+{
+	assert(eis_node(e));
+	assert(eis_sym(echild(e,0)));
+    _gen_message(echild(e,0), "intnm", NULL, ecopy(e), emake_cint(n1));
+    return ecopy(e);
+}
+
+ex _handle_message_intm(er e, uint32_t n1)
+{
+	assert(eis_node(e));
+	assert(eis_sym(echild(e,0)));
+    _gen_message(echild(e,0), "intm", NULL, ecopy(e), emake_cint(n1));
+    return ecopy(e);
+}
+
+ex _handle_message_ilsmn(er e, uint32_t n1)
+{
+	assert(eis_node(e));
+	assert(eis_sym(echild(e,0)));
+    _gen_message(echild(e,0), "ilsmn", nullptr, ecopy(e), emake_cint(n1));
+    return ecopy(e);
+}
+
 
 ex dcode_sMessage(er e)
 {

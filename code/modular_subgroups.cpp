@@ -935,10 +935,10 @@ static bool ex_get_permutation(std::vector<u32> &p, er e)
 {
     if (eis_parray(e))
     {
-std::cout << "setting permutation from parray" << std::endl;
+//std::cout << "setting permutation from parray" << std::endl;
 
-std::cout << "type: " << eparray_type(e) << std::endl;
-std::cout << "rank: " << eparray_rank(e) << std::endl;
+//std::cout << "type: " << eparray_type(e) << std::endl;
+//std::cout << "rank: " << eparray_rank(e) << std::endl;
 
         if (eparray_type(e) != 0)
             return false;
@@ -947,21 +947,21 @@ std::cout << "rank: " << eparray_rank(e) << std::endl;
             return false;
 
         slong n = eparray_dimension(e, 0);
-        slong * data = eparray_int_data(e);
+        fmpz * data = eparray_int_data(e);
 
-std::cout << "dim0: " << n << std::endl;
+//std::cout << "dim0: " << n << std::endl;
 
 
         p.resize(n + 1);
         p[0] = 0;
         for (slong i = 0; i < n; i++)
         {
-            p[i + 1] = data[i];
-            if (data[i] < 0 || data[i] > n)
+            if (COEFF_IS_MPZ(data[i]) || data[i] < 0 || data[i] > n)
                 return false;
+            p[i + 1] = data[i];
         }
 
-std::cout << "setting permutation success" << std::endl;
+//std::cout << "setting permutation success" << std::endl;
 
         return true;
     }
@@ -977,16 +977,12 @@ std::cout << "setting permutation success" << std::endl;
     for (size_t i = 1; i <= elength(e); i++)
     {
         er ei = echild(e,i);
-        if (!eis_machine_int(ei))
-        {
+        if (!eis_intm(ei))
             return false;
-        }
 
-        slong j = eget_machine_int(ei);
-        if (j < 0 || j > elength(e))
-        {
+        ulong j = eintm_get(ei);
+        if (j > elength(e))
             return false;
-        }
 
         p.push_back(j);
     }
@@ -1022,20 +1018,20 @@ ex Group::get_ex() const
     assert(O.size() > 1);
     assert(S.size() == O.size());
 
-    slong * data;
-
-    uex s(emake_parray1(0, S.size() - 1));
-    data = eparray_int_data(s.get());
+    uex s(emake_parray_rank1(0, S.size() - 1));
+    fmpz * data = eparray_int_data(s.get());
     for (size_t i = 1; i < S.size(); i++)
     {
         data[i - 1] = S[i];
+        assert(data[i - 1] <= COEFF_MAX);
     }
 
-    uex o(emake_parray1(0, O.size() - 1));
+    uex o(emake_parray_rank1(0, O.size() - 1));
     data = eparray_int_data(o.get());
     for (size_t i = 1; i < O.size(); i++)
     {
         data[i - 1] = O[i];
+        assert(data[i - 1] <= COEFF_MAX);
     }
 
     ex r = emake_node(gs.sym_msGroup.copy(), s.release(), o.release());
@@ -1434,7 +1430,7 @@ bool Group::join(const Group & a, const Group & b)
 
     g.Fold();
     g.ToGroup(S, O);
-    standardize();
+
     return true;
 }
 
@@ -2469,6 +2465,7 @@ ex dcode_msJoin(er e)
 
     if (g.join(a, b))
     {
+        g.standardize();
         return g.get_ex();
     }
     else
@@ -2493,6 +2490,7 @@ ex dcode_msMeet(er e)
 
     if (g.meet(a, b))
     {
+        g.standardize();
         return g.get_ex();
     }
     else
@@ -2513,7 +2511,7 @@ ex dcode_msFromMemberQ(er e)
     MatrixMemberFunction f(echild(e,1));
 
     g.from_memberq(f);
-
+    g.standardize();
     return g.get_ex();
 }
 

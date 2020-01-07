@@ -16,11 +16,13 @@ public:
 
     int emptyset;
     ex (*num_combine)(er, er);
+    ex (*expr_combine)(er);
     wex head;
     
 
-    accumulator(int emptyset_, er head_, ex (*num_combine_)(er, er)) :
+    accumulator(int emptyset_, er head_, ex (*num_combine_)(er, er), ex (*expr_combine_)(er)) :
         num_combine(num_combine_),
+        expr_combine(expr_combine_),
         head(ecopy(head_)),
         emptyset(emptyset_),
         ncount(0),
@@ -44,14 +46,12 @@ public:
         else
         {
             estack.push_back(uex(T));
-/*
             ecount++;
             if ((ecount%1024) == 0 && estack.size() >= 1024)
             {
-                uex e1(emake_node(gs.sym_sPlus.copy(), estack.size() - 1024, estack));
+                uex e1(emake_node(head.copy(), estack.size() - 1024, estack));
                 estack.push_back(uex(dcode_sPlus(e1.get())));
             }
-*/
         }
     }
 
@@ -275,7 +275,7 @@ ex dcode_sSum(er e)
     if (elength(e) < 2)
         _handle_message_argm(e, 2);
 
-    accumulator A(0, gs.sym_sPlus.get(), &num_Plus2);
+    accumulator A(0, gs.sym_sPlus.get(), &num_Plus2, &dcode_sPlus);
     int retcode = _sum_nested(A, e, 2);
     if (retcode == 0)
     {
@@ -296,7 +296,7 @@ ex dcode_sProduct(er e)
     if (elength(e) < 2)
         _handle_message_argm(e, 2);
 
-    accumulator A(1, gs.sym_sTimes.get(), &num_Times2);
+    accumulator A(1, gs.sym_sTimes.get(), &num_Times2, &dcode_sTimes);
     int retcode = _sum_nested(A, e, 2);
     if (retcode == 0)
     {

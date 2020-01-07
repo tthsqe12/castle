@@ -2,6 +2,10 @@
 #include "code.h"
 #include "eval.h"
 
+/*
+    our control flow code is exceptionally good
+*/
+
 ex dcode_sIf(er e)
 {
 //std::cout << "dcode_sIf: " << ex_tostring_full(e) << std::endl;
@@ -26,14 +30,50 @@ ex dcode_sIf(er e)
     er e2 = echild(e,2);
 
     if (eis_sym(e1, gs.sym_sTrue.get()))
-    {
         r = e2;
-    }
+
     if (eis_sym(e1, gs.sym_sFalse.get()))
-    {
         r = e3;
-    }
+
     return ecopy(r);
+}
+
+ex dcode_sWhich(er e)
+{
+//std::cout << "dcode_sWhile: " << ex_tostring_full(e.get()) << std::endl;
+    assert(ehas_head_sym(e, gs.sym_sWhich.get()));
+
+    ulong n = elength(e);
+
+    if ((n % 2) != 0)
+        return _handle_message_argct(e);
+
+    for (ulong i = 0; i < n; i += 2)
+    {
+        ex c = eval(ecopychild(e, i + 1));
+        eclear(c); // dirty but OK
+        if (eis_sym(c, gs.sym_sTrue.get()))
+        {
+            return ecopychild(e, i + 2);
+        }
+        else if (eis_sym(c, gs.sym_sFalse.get()))
+        {
+            continue;
+        }
+        else if (i > 0)
+        {
+            uex r(echild(e,0), n - i);
+            for (; i < n; i++)
+                r.push_back(ecopychild(e, i + 1));
+            return r.release();
+        }
+        else
+        {
+            return ecopy(e);
+        }
+    }
+
+    return gs.sym_sNull.copy();
 }
 
 ex dcode_sWhile(er e)
@@ -95,9 +135,7 @@ ex dcode_sGoto(er e)
     assert(ehas_head_sym(e, gs.sym_sGoto.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     throw exception_sym_sGoto(ecopy(e));
     return nullptr;
@@ -149,14 +187,6 @@ ex dcode_sCompoundExpression(er e)
             }
         }
     }
-}
-
-ex dcode_sWhich(er e)
-{
-//std::cout << "dcode_sWhile: " << ex_tostring_full(e.get()) << std::endl;
-    assert(ehas_head_sym(e, gs.sym_sWhile.get()));
-
-    return gs.sym_sNull.copy();
 }
 
 ex dcode_sReturn(er e)
@@ -229,14 +259,11 @@ ex dcode_sSow(er e)
     assert(ehas_head_sym(e, gs.sym_sSow.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
+    // Sow without enclosing Reap is OK
     if (!gs.reaper_stack.empty())
-    {
         gs.reaper_stack.back().push_back(wex(ecopychild(e,1)));
-    }
 
     return ecopychild(e,1);
 }
@@ -262,9 +289,7 @@ ex dcode_sReap(er e)
     assert(ehas_head_sym(e, gs.sym_sReap.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     install_reaper R;
     uex r(eval(ecopychild(e,1)));
@@ -280,9 +305,7 @@ ex dcode_sThrow(er e)
     assert(ehas_head_sym(e, gs.sym_sThrow.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     throw exception_sym_sThrow(ecopy(e));
     return nullptr;
@@ -294,9 +317,7 @@ ex dcode_sCatch(er e)
     assert(ehas_head_sym(e, gs.sym_sCatch.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     try
     {
@@ -331,9 +352,7 @@ ex dcode_sQuiet(er e)
     assert(ehas_head_sym(e, gs.sym_sQuiet.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     install_muffler M;
     uex r(eval(ecopychild(e,1)));

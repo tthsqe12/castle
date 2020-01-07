@@ -454,7 +454,7 @@ static ex _roots_irr1(const fmpz_poly_t p)
     uex r1(emake_rat());
     fmpq_set_fmpz_frac(erat_data(r1.get()), p->coeffs + 0, p->coeffs + 1);
     fmpq_neg(erat_data(r1.get()), erat_data(r1.get()));
-    r1.set(ereturn_rat(r1.release()));
+    r1.set(efix_rat(r1.release()));
     return emake_node(gs.sym_sList.copy(), r1.release());
 }
 
@@ -553,18 +553,18 @@ static ex _roots_irr3(const fmpz_poly_t p)
         uex t0(emake_rat());
         fmpq_set_fmpz_frac(erat_data(t0.get()), p->coeffs + 2, eint_data(b.get()));
         fmpq_neg(erat_data(t0.get()), erat_data(t0.get()));
-        t0.set(ereturn_rat(t0.release()));
+        t0.set(efix_rat(t0.release()));
 
         uex t1(emake_rat());
         fmpq_set_fmpz_frac(erat_data(t1.get()), A, eint_data(b.get()));
         fmpq_neg(erat_data(t1.get()), erat_data(t1.get()));
-        t1.set(ereturn_rat(t1.release()));
+        t1.set(efix_rat(t1.release()));
         ex t = emake_node(gs.sym_sPower.copy(), d.copy(), emake_crat(-1,3));
         t1.set(emake_node(gs.sym_sTimes.copy(), t1.release(), t));
         
         uex t2(emake_rat());
         fmpq_set_fmpz_frac(erat_data(t2.get()), eint_data(eget_cint(1)), eint_data(b.get()));
-        t2.set(ereturn_rat(t2.release()));
+        t2.set(efix_rat(t2.release()));
         t = emake_node(gs.sym_sPower.copy(), d.copy(), emake_crat(1,3));
         t2.set(emake_node(gs.sym_sTimes.copy(), t2.release(), t));
 
@@ -642,7 +642,7 @@ static ex _roots_irr4(const fmpz_poly_t p)
         uex t2(emake_node(gs.sym_sPower.copy(), u12.copychild(2), emake_crat(1,2)));
         uex t0(emake_rat());
         fmpq_neg(erat_data(t0.get()), b3.data);
-        t0.set(ereturn_rat(t0.release()));
+        t0.set(efix_rat(t0.release()));
         uex mt1(emake_node(gs.sym_sTimes.copy(), emake_cint(-1), t1.copy()));
         uex mt2(emake_node(gs.sym_sTimes.copy(), emake_cint(-1), t2.copy()));
         uex r1(emake_node(gs.sym_sPlus.copy(), t0.copy(), mt1.copy(), mt2.copy()));
@@ -669,7 +669,7 @@ static ex _roots_irr4(const fmpz_poly_t p)
         uex t3(emake_node(gs.sym_sPower.copy(), u123.copychild(3), emake_crat(1,2)));
         uex t0(emake_rat());
         fmpq_neg(erat_data(t0.get()), b3.data);
-        t0.set(ereturn_rat(t0.release()));
+        t0.set(efix_rat(t0.release()));
         uex s1(emake_node(gs.sym_sTimes.copy(), t2.copy(), t3.copy()));
         uex s2(emake_node(gs.sym_sTimes.copy(), t1.copy(), t3.copy()));
         uex s3(emake_node(gs.sym_sTimes.copy(), t1.copy(), t2.copy()));

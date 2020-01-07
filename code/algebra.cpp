@@ -447,13 +447,13 @@ ex enumber_reduce_mod(er e, const xfmpz & m)
             {
                 ex x = emake_int();
                 fmpz_mod(eint_data(x), eint_data(e), m.data);
-                return ereturn_int(x);
+                return efix_int(x);
             }
             case ETYPE_RAT:
             {
                 ex x = emake_int();
                 if (fmpq_mod_fmpz(eint_data(x), erat_data(e), m.data))
-                    return ereturn_int(x);
+                    return efix_int(x);
                 eclear(x);
                 return nullptr;
             }

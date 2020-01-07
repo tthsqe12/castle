@@ -20,8 +20,15 @@ ex dcode_sLength(er e)
     }
     else if (eis_cont(x))
     {
-        assert(false);
-        return emake_cint(0);
+        if (eis_parray(x))
+        {
+            return emake_int_si(eparray_dimension(x,0));
+        }
+        else
+        {
+            assert(false);
+            return emake_cint(0);
+        }
     }
     else
     {

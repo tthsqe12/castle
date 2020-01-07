@@ -2,6 +2,7 @@
 #include "code.h"
 #include "ex_print.h"
 #include "eval.h"
+#include "ex_cont.h"
 
 static ex det(er m, std::vector<size_t> & row, std::vector<size_t> & col)
 {
@@ -185,29 +186,27 @@ ex dcode_sIdentityMatrix(er e)
     assert(ehas_head_sym(e, gs.sym_sIdentityMatrix.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
-    slong nn;
-    if (!eis_machine_int(echild(e,1))
-        || (nn = eget_machine_int(echild(e,1)), nn <= 0))
+    if (!eis_intpm(echild(e,1)))
     {
+		_gen_message(echild(e,0), "intpm", NULL, ecopy(e), emake_cint(1));
         return ecopy(e);
     }
 
-    size_t n = nn;
-    uex mat(gs.sym_sList.get(), n);
-
-    for (size_t i = 1; i <= n; i++)
-    {
-        uex row(gs.sym_sList.get(), n);
-        for (size_t j = 1; j <= n; j++)
-        {
-            row.push_back(emake_cint(i == j));
-        }
-        mat.push_back(row.release());
-    }
-
-    return mat.release();
+    ulong n = eintm_get(echild(e,1));
+	ulong msize;
+	if (UMUL(msize, n, n))
+	{
+        _gen_message(echild(e,0), "toomany", NULL, ecopy(e));
+        return ecopy(e);
+	}
+	parray_dims mdims(2);
+	mdims.set_index(0, n);
+	mdims.set_index(1, n);
+    ex m = emake_parray(0, mdims, msize);
+	fmpz * M = eparray_int_data(m);
+    for (ulong i = 0; i < n; i++)
+		fmpz_one(M + i*n + i);
+    return m;
 }

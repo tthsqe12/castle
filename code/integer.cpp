@@ -2,335 +2,7 @@
 #include "code.h"
 #include "timing.h"
 #include "ex_print.h"
-
-class ZMatrix {
-public:
-    xfmpz _11, _12, _21, _22;
-
-    ZMatrix() : _11((ulong)(1)), _22((ulong)(1)) {};
-
-    ZMatrix(slong a11, slong a12, slong a21, slong a22) : _11(a11), _12(a12), _21(a21), _22(a22) {};
-
-    ZMatrix(ZMatrix&& other) noexcept : _11(other._11), _12(other._12), _21(other._21), _22(other._22) {};
-
-    ZMatrix& operator=(ZMatrix&& other) noexcept
-    {
-        if (this != &other)
-        {
-            fmpz_swap(_11.data, other._11.data);
-            fmpz_swap(_12.data, other._12.data);
-            fmpz_swap(_21.data, other._21.data);
-            fmpz_swap(_22.data, other._22.data);
-            _fmpz_demote(other._11.data);
-            _fmpz_demote(other._12.data);
-            _fmpz_demote(other._21.data);
-            _fmpz_demote(other._22.data);
-        }  
-        return *this;  
-    }
-
-    ZMatrix(const ZMatrix& other) : _11(other._11), _12(other._12), _21(other._21), _22(other._22) {};
-
-    ZMatrix& operator=(const ZMatrix& other)
-    {
-        fmpz_set(_11.data, other._11.data);
-        fmpz_set(_12.data, other._12.data);
-        fmpz_set(_21.data, other._21.data);
-        fmpz_set(_22.data, other._22.data);
-        return *this;  
-    }
-
-
-    void set(const ZMatrix &other)
-    {
-        fmpz_set(_11.data, other._11.data);
-        fmpz_set(_12.data, other._12.data);
-        fmpz_set(_21.data, other._21.data);
-        fmpz_set(_22.data, other._22.data);
-    };
-
-    void set(xfmpz &a11, xfmpz &a12, xfmpz &a21, xfmpz &a22)
-    {
-        fmpz_set(_11.data, a11.data);
-        fmpz_set(_12.data, a12.data);
-        fmpz_set(_21.data, a21.data);
-        fmpz_set(_22.data, a22.data);
-    };
-
-    void set(slong a11, slong a12, slong a21, slong a22)
-    {
-        fmpz_set_si(_11.data, a11);
-        fmpz_set_si(_12.data, a12);
-        fmpz_set_si(_21.data, a21);
-        fmpz_set_si(_22.data, a22);
-    };
-
-    bool set_ex(er e);
-    ex get_ex() const;
-    ex get_ex_neg() const;
-
-    // this = {{0,1},{1,-a}}.this
-    void leftmul_elementary(const fmpz_t a)
-    {
-		fmpz_submul(_11.data, a, _21.data);
-		fmpz_submul(_12.data, a, _22.data);
-		fmpz_swap(_11.data, _21.data);
-		fmpz_swap(_12.data, _22.data);
-    }
-
-    // this = m.this
-    void leftmul(const ZMatrix & m)
-    {
-        xfmpz a, b, c, d;
-        fmpz_mul(a.data, m._11.data, _11.data); fmpz_addmul(a.data, m._12.data, _21.data);
-        fmpz_mul(b.data, m._11.data, _12.data); fmpz_addmul(b.data, m._12.data, _22.data);
-        fmpz_mul(c.data, m._21.data, _11.data); fmpz_addmul(c.data, m._22.data, _21.data);
-        fmpz_mul(d.data, m._21.data, _12.data); fmpz_addmul(d.data, m._22.data, _22.data);
-        fmpz_swap(_11.data, a.data);
-        fmpz_swap(_12.data, b.data);
-        fmpz_swap(_21.data, c.data);
-        fmpz_swap(_22.data, d.data);
-    };
-
-    bool is_one() const
-    {
-        return fmpz_is_one(_11.data) && fmpz_is_one(_22.data)
-           && fmpz_is_zero(_12.data) && fmpz_is_zero(_21.data);
-    }
-
-    void one()
-    {
-        fmpz_one(_11.data);
-		fmpz_one(_22.data);
-		fmpz_zero(_12.data);
-		fmpz_zero(_21.data);
-    }
-
-	void map(arb_t x, arb_t t1, arb_t t2, arb_t t3)
-	{
-		slong p = arb_rel_accuracy_bits(x) + FLINT_BITS;
-		arb_mul_fmpz(t1, x, _11.data, p + fmpz_bits(_11.data));
-		arb_add_fmpz(t2, t1, _12.data, p + fmpz_bits(_12.data));
-		arb_mul_fmpz(t1, x, _21.data, p + fmpz_bits(_21.data));
-		arb_add_fmpz(t3, t1, _22.data, p + fmpz_bits(_22.data));
-        slong p1 = arb_rel_accuracy_bits(t2);
-        slong p2 = arb_rel_accuracy_bits(t3);
-		arb_div(x, t2, t3, FLINT_MAX(p1, p2) + FLINT_BITS);
-	}
-};
-
-
-static bool try_step(fmpz_t a, arb_t y, const arb_t x, arb_t t, bool first)
-{
-    arb_floor(y, x, arb_rel_accuracy_bits(x) + FLINT_BITS);
-    if (!arb_get_unique_fmpz(a, y))
-        return false;
-
-    if (!first && fmpz_sgn(a) <= 0)
-        return false;
-
-    arb_sub_fmpz(t, x, a, arb_rel_accuracy_bits(x) + FLINT_BITS);
-    arb_inv(y, t, arb_rel_accuracy_bits(t) + FLINT_BITS);
-	return true;
-}
-
-
-//#include <flint/profiler.h>
-
-static void cf(std::vector<wex> & A, ZMatrix & M, arb_t x)
-{
-	xfmpz a;
-    xarb t, y, v;
-	ZMatrix N;
-    slong p;
-//timeit_t timer;
-
-    M.one();
-
-over:
-
-    p = arb_rel_accuracy_bits(x);
-
-    if (p < 10000)
-    {
-doit:
-
-//timeit_start(timer);
-        N.one();
-        while (try_step(a.data, y.data, x, t.data, A.empty()))
-        {
-            N.leftmul_elementary(a.data);
-            A.push_back(emake_int_move(a));
-            arb_swap(y.data, x);
-        }
-        M.leftmul(N);
-
-//timeit_stop(timer);
-//flint_printf("p = %wd, do it: %wd\n", p, timer->wall);
-
-        return;
-    }
-    arb_set_round(v.data, x, p/2);
-    if (arb_rel_accuracy_bits(v.data) >= p - p/4)
-        goto doit;
-
-//timeit_start(timer);
-    cf(A, N, v.data);
-//timeit_stop(timer);
-//flint_printf("p = %wd, recur: %wd\n", p, timer->wall);
-
-    if (N.is_one())
-    {
-        if (try_step(a.data, y.data, x, t.data, A.empty()))
-        {
-            M.leftmul_elementary(a.data);
-            A.push_back(emake_int_move(a));
-            arb_swap(x, y.data);
-            goto over;
-        }
-        else
-        {
-            return;
-        }
-    }
-
-//timeit_start(timer);
-    M.leftmul(N);
-    N.map(x, v.data, y.data, t.data);
-//timeit_stop(timer);
-//flint_printf("p = %wd, mapit: %wd\n", p, timer->wall);
-
-    goto over;
-}
-
-ex dcode_sContinuedFraction(er e)
-{
-//std::cout << "dcode_sContinuedFraction: " << ex_tostring_full(e) << std::endl;
-    assert(ehas_head_sym(e, gs.sym_sContinuedFraction.get()));
-
-    if (elength(e) > 2 || elength(e) < 1)
-        return _handle_message_argt(e, (1 << 0) + (2 << 8));
-
-    if (elength(e) != 1 || !eis_real(echild(e,1)))
-        return ecopy(e);
-
-    er x = echild(e,1);
-
-    std::vector<wex> A;
-	ZMatrix M;
-    xarb t;
-    arb_abs(t.data, ereal_data(echild(e,1)));
-	cf(A, M, t.data);
-    return emake_node(gs.sym_sList.copy(), A);
-}
-
-
-ex dcode_sChampernowneNumber(er e)
-{
-    if (elength(e) > 1)
-        return _handle_message_argt(e, (0 << 0) + (1 << 8));
-
-    if (elength(e) < 1)
-        return ecopy(e);
-
-    er x = echild(e,1);
-
-    if (!eis_number(x))
-        return ecopy(e);
-
-    if (!eis_int(x) || fmpz_cmp_ui(eint_data(x), 1) <= 0)
-        _gen_message(echild(e,0), "ibase", "Base `1` is not an integer greater than 1.", ecopychild(e,1));
-
-    return ecopy(e);
-}
-
-
-ex ncode_sChampernowneNumber(er e, slong prec)
-{
-//std::cout << "ncode_sChampernowneNumber(" << prec << "): " << ex_tostring_full(e) << std::endl;
-    assert(ehas_head_sym(e, gs.sym_sChampernowneNumber.get()));
-
-    if (elength(e) > 1)
-        return ecopy(e);
-
-    if (elength(e) == 1 && !eis_int(echild(e,1)))
-        return ecopy(e);
-
-    xfmpz B(UWORD(10));
-    if (elength(e) == 1)
-        fmpz_set(B.data, eint_data(echild(e,1)));
-
-    if (fmpz_cmp_ui(B.data, 1) <= 0)
-        return ecopy(e);
-
-    xarb z, s, d, u, v;
-    xfmpz a, t0, t1, t2, t3, t4, t6;
-
-    if (!fmpz_abs_fits_ui(B.data))
-	{
-		// we only need one term
-		fmpz_sub_ui(t0.data, B.data, 1);
-		fmpz_mul(t2.data, t0.data, t0.data);
-	    arb_fmpz_div_fmpz(z.data, B.data, t2.data, prec + 1); // TODO add error
-	    return emake_real_move(z);
-	}
-
-    ulong b = fmpz_get_ui(B.data);
-    ulong p = prec + 2 + fmpz_bits(B.data);	// target is abserror < 2^-p
-
-    double mlog2u = (b - 1)*log2(b);
-
-    std::vector<xfmpz> ck;
-    ck.push_back(xfmpz(UWORD(1)));
-    ulong k = 1;
-    while (true)
-    {
-        k++;
-        fmpz_pow_ui(t0.data, B.data, k - 1);
-        fmpz_mul_ui(t0.data, t0.data, k);
-        fmpz_add(t0.data, t0.data, ck[k - 1-1].data);
-        if (fmpz_cmp_ui(t0.data, 1 + (p + k + 2)/mlog2u) > 0)
-            break;
-        ck.push_back(t0);
-    }
-    ulong n = k - 1;
-
-	arb_zero_pm_one(s.data);
-	arb_mul_2exp_si(s.data, s.data, -slong(p + n + 2)); // tail error
-    for (k = n; k != 0; k--)
-    {
-        ulong w1 = 5 + p + k;
-        ulong w2 = mlog2u*fmpz_get_d(ck[k - 1].data);
-        ulong w = 5 + (w1 > w2 ? w1 - w2 : 0);
-        flint_bitcnt_t ckbits = fmpz_bits(ck[k - 1].data);
-        fmpz_pow_ui(a.data, B.data, k);
-        fmpz_sub_ui(t0.data, a.data, 1);
-        fmpz_mul(t1.data, t0.data, a.data);
-        fmpz_add_ui(t1.data, t1.data, 1);
-        fmpz_mul(t2.data, t0.data, t0.data);
-		fmpz_divexact_ui(t0.data, t0.data, b - 1);
-        fmpz_mul(t3.data, t0.data, t0.data);
-        fmpz_mul(t0.data, a.data, B.data);
-        fmpz_sub_ui(t0.data, t0.data, 1);
-        fmpz_mul(t4.data, t0.data, a.data);
-        fmpz_add_ui(t4.data, t4.data, 1);
-		fmpz_divexact_ui(t0.data, t0.data, b - 1);
-        fmpz_mul(t6.data, t0.data, t0.data);
-        fmpz_mul(t0.data, t2.data, t6.data);
-        fmpz_mul(t2.data, t6.data, t1.data);
-        fmpz_submul(t2.data, t3.data, t4.data);
-        arb_fmpz_div_fmpz(d.data, t2.data, t0.data, w);
-        arb_ui_pow_ui(u.data, b, b - 1, w + ckbits);
-        arb_pow_fmpz(v.data, u.data, ck[k-1].data, w + ckbits);
-        arb_div(z.data, d.data, v.data, w);
-        arb_add(s.data, s.data, z.data, w);
-    }
-	fmpz_set_ui(t2.data, b - 1);
-    fmpz_mul_ui(t2.data, t2.data, b - 1);
-    arb_fmpz_div_fmpz(z.data, B.data, t2.data, prec + 3);
-    arb_sub(z.data, z.data, s.data, prec + 3);
-    return emake_real_move(z);
-}
+#include "ex_cont.h"
 
 ex dcode_sIntegerQ(er e)
 {
@@ -356,15 +28,13 @@ ex dcode_sCyclotomic(er e)
     if (!eis_number(e1))
         return ecopy(e);
 
-    slong nn;
-    if (!eis_int(e1) || !fmpz_fits_si(eint_data(e1))
-                     || (nn = fmpz_get_si(eint_data(e1))) < 0)
+    if (!eis_intnm(e1))
     {
         _gen_message(echild(e,0), "intnm", nullptr, ecopy(e), emake_cint(1));
         return ecopy(e);
     }
 
-    ulong n = nn;
+    ulong n = eintm_get(e1);
     fmpz * coeffs;
     n_factor_t factors;
     ulong s, phi;
@@ -463,9 +133,9 @@ ex dcode_sDedekindSum(er e)
         }
         else if (eis_rat(X))
         {
-            ex Z = emake_rat();
-            fmpq_dedekind_sum(erat_data(Z), fmpq_numref(erat_data(X)), fmpq_denref(erat_data(X)));
-            return ereturn_rat(Z);
+            ex z = emake_rat();
+            fmpq_dedekind_sum(erat_data(z), fmpq_numref(erat_data(X)), fmpq_denref(erat_data(X)));
+            return efix_rat(z);
         }
         else
         {
@@ -474,7 +144,7 @@ ex dcode_sDedekindSum(er e)
     }
     else
     {
-        return ecopy(e);
+        return _handle_message_argx1(e);
     }
 }
 
@@ -484,23 +154,11 @@ ex dcode_sPrimeQ(er e)
     assert(ehas_head_sym(e, gs.sym_sPrimeQ.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
-    e = echild(e,1);
-
-    if (!eis_int(e))
-    {
-        return gs.sym_sFalse.copy();
-    }
-
-    if (!fmpz_is_probabprime(eint_data(e))
-        || !fmpz_is_prime(eint_data(e)))
-    {
-        return gs.sym_sFalse.copy();
-    }
-    return gs.sym_sTrue.copy();
+    er x = echild(e,1);
+    return emake_boole(eis_int(x) && fmpz_is_probabprime(eint_data(x))
+                                  && fmpz_is_prime(eint_data(x)));
 }
 
 ex dcode_sEulerPhi(er e)
@@ -508,18 +166,15 @@ ex dcode_sEulerPhi(er e)
 //std::cout << "dcode_sEulerPhi: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_sEulerPhi.get()));
 
-    if (elength(e) == 1)
+    if (elength(e) != 1)
+        return _handle_message_argx1(e);
+    er x = echild(e,1);
+
+    if (eis_int(x))
     {
-        if (eis_int(echild(e,1)))
-        {
-            ex Z = emake_int();
-            fmpz_euler_phi(eint_data(Z), eint_data(echild(e,1)));
-            return ereturn_int(Z);
-        }
-        else
-        {
-            return ecopy(e);
-        }
+        ex Z = emake_int();
+        fmpz_euler_phi(eint_data(Z), eint_data(x));
+        return efix_int(Z);
     }
     else
     {
@@ -532,17 +187,14 @@ ex dcode_sMoebiusMu(er e)
 //std::cout << "dcode_sMoebiusMu: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_sMoebiusMu.get()));
 
-    if (elength(e) == 1)
+    if (elength(e) != 1)
+        return _handle_message_argx1(e);
+    er x = echild(e,1);
+
+    if (eis_int(x))
     {
-        if (eis_int(echild(e,1)))
-        {
-            slong z = fmpz_moebius_mu(eint_data(echild(e,1)));
-            return emake_cint(z);
-        }
-        else
-        {
-            return ecopy(e);
-        }
+        slong z = fmpz_moebius_mu(eint_data(x));
+        return emake_cint(z);
     }
     else
     {
@@ -564,7 +216,7 @@ ex dcode_sNextPrime(er e)
 
     ex Z = emake_int();
     fmpz_nextprime(eint_data(Z), eint_data(x), 1);
-    return ereturn_int(Z);
+    return efix_int(Z);
 }
 
 ex dcode_sFactorInteger(er e)
@@ -630,7 +282,7 @@ ex dcode_sFactorInteger(er e)
         return ecopy(e);
     }
 }
-
+/*
 struct wex_ipair_compare {
     bool operator()(const std::pair<wex, wex>& a,
                     const std::pair<wex, wex>& b) const
@@ -638,6 +290,15 @@ struct wex_ipair_compare {
         return fmpz_cmp(eint_data(a.first.get()), eint_data(b.first.get())) < 0;
     }
 };
+*/
+struct _ipair_compare {
+    bool operator()(const std::pair<xfmpz, xfmpz>& a,
+                    const std::pair<xfmpz, xfmpz>& b) const
+    {
+        return fmpz_cmp(a.first.data, b.first.data) < 0;
+    }
+};
+
 
 ex dcode_sDivisors(er e)
 {
@@ -646,72 +307,64 @@ ex dcode_sDivisors(er e)
 
     if (elength(e) != 1)
         _handle_message_argx1(e);
+    er n = echild(e,1);
 
-    if (!eis_int(echild(e,1)))
+    if (!eis_int(n))
         return ecopy(e);
 
     // make divisors of n
-    er n = echild(e,1);
     if (fmpz_is_zero(eint_data(n)))
         return emake_node(gs.sym_sList.copy());
 
     xfmpz_factor fs;
     fmpz_factor(fs.data, eint_data(n));
 
-    slong numdiv = 1, hi;
-    for (slong i = 0; i < fs.data->num; i++)
+    ulong numdiv = 1;
+    for (ulong i = 0; i < fs.data->num; i++)
     {
-        umul_ppmm(hi, numdiv, numdiv, fs.data->exp[i] + 1);
-        if (hi != 0 || numdiv <= 0)
+        if (UMUL(numdiv, numdiv, fs.data->exp[i] + 1))
         {
             _gen_message(echild(e,0), "toomany", NULL, ecopy(e));
             return ecopy(e);
         }
     }
 
-    uex r(gs.sym_sList.get(), numdiv);
-    for (slong i = 0; i < numdiv; i++)
-    {
-        r.push_back(emake_cint(0));
-    }
+    uex r(emake_parray_rank1(0, numdiv));
+    fmpz * R = eparray_int_data(r.get());
 
-    size_t aoff = 0;
-    size_t boff = numdiv + 1;
-
-    // H contains pairs {a,b} where a*b = n and a <= b
-    std::set<std::pair<wex, wex>, wex_ipair_compare> H;
-    H.insert(std::pair<wex, wex>(wex(emake_cint(1)), wex(ecopy(n))));
+    std::set<std::pair<xfmpz, xfmpz>, _ipair_compare> H;
+    H.insert(std::pair<xfmpz, xfmpz>(xfmpz(ulong(1)), xfmpz(eint_data(n))));
     xfmpz anext, bnext, rem;
+
+    ulong aoff = 0;
+    ulong boff = numdiv - 1;
     while (!H.empty())
     {
-        aoff++;
-        boff--;
-        if (aoff == boff)
+        if (aoff >= boff)
         {
-            assert(fmpz_equal(eint_data(H.begin()->first.get()),
-                              eint_data(H.begin()->second.get())));
-            r.replacechild(aoff, H.begin()->first.copy());
+            assert(aoff == boff);
+            assert(fmpz_equal(H.begin()->first.data, H.begin()->second.data));
+            fmpz_swap(R + aoff, (fmpz*)H.begin()->first.data);
+            break;
         }
         else
         {
             assert(aoff < boff);
-            r.replacechild(aoff, H.begin()->first.copy());
-            r.replacechild(boff, H.begin()->second.copy());
+            fmpz_swap(R + aoff++, (fmpz*)H.begin()->first.data);
+            fmpz_swap(R + boff--, (fmpz*)H.begin()->second.data);
+            if (aoff > boff)
+                break;
         }
         H.erase(H.begin());
-        for (slong i = 0; i < fs.data->num; i++)
+        for (ulong i = 0; i < fs.data->num; i++)
         {
-            fmpz_fdiv_qr(bnext.data, rem.data, eint_data(r.child(boff)), fs.data->p + i);
+            fmpz_fdiv_qr(bnext.data, rem.data, R + boff + 1, fs.data->p + i);
             if (!fmpz_is_zero(rem.data))
-            {
                 continue;
-            }
-            fmpz_mul(anext.data, eint_data(r.child(aoff)), fs.data->p + i);
+            fmpz_mul(anext.data, R + aoff - 1, fs.data->p + i);
             if (fmpz_cmp(anext.data, bnext.data) > 0)
-            {
                 continue;
-            }
-            H.insert(std::pair<wex, wex>(wex(emake_int_move(anext)), wex(emake_int_move(bnext))));
+            H.insert(std::pair<xfmpz, xfmpz>(xfmpz(std::move(anext)), xfmpz(std::move(bnext))));
         }
     }
 
@@ -730,33 +383,33 @@ ex dcode_sGCD(er e)
         er y = echild(e,2);
         if (eis_int(x) && eis_int(y))
         {
-            ex Z = emake_int();
-            fmpz_gcd(eint_data(Z), eint_data(x), eint_data(y));
-            return ereturn_int(Z);
+            ex z = emake_int();
+            fmpz_gcd(eint_data(z), eint_data(x), eint_data(y));
+            return efix_int(z);
         }
         else if (eis_int(x) && eis_rat(y))
         {
-            ex Z = emake_rat();
-            _fmpq_gcd(fmpq_numref(erat_data(Z)), fmpq_denref(erat_data(Z)),
+            ex z = emake_rat();
+            _fmpq_gcd(fmpq_numref(erat_data(z)), fmpq_denref(erat_data(z)),
                     eint_data(x), eint_data(eget_cint(1)),
                     fmpq_numref(erat_data(y)), fmpq_denref(erat_data(y)));
-            return ereturn_rat(Z);
+            return efix_rat(z);
         }
         else if (eis_rat(x) && eis_int(y))
         {
-            ex Z = emake_rat();
-            _fmpq_gcd(fmpq_numref(erat_data(Z)), fmpq_denref(erat_data(Z)),
+            ex z = emake_rat();
+            _fmpq_gcd(fmpq_numref(erat_data(z)), fmpq_denref(erat_data(z)),
                     eint_data(y), eint_data(eget_cint(1)),
                     fmpq_numref(erat_data(x)), fmpq_denref(erat_data(x)));
-            return ereturn_rat(Z);
+            return efix_rat(z);
         }
         else if (eis_rat(x) && eis_rat(y))
         {
-            ex Z = emake_rat();
-            _fmpq_gcd(fmpq_numref(erat_data(Z)), fmpq_denref(erat_data(Z)),
+            ex z = emake_rat();
+            _fmpq_gcd(fmpq_numref(erat_data(z)), fmpq_denref(erat_data(z)),
                     fmpq_numref(erat_data(x)), fmpq_denref(erat_data(x)),
                     fmpq_numref(erat_data(y)), fmpq_denref(erat_data(y)));
-            return ereturn_rat(Z);
+            return efix_rat(z);
         }
         else
         {
@@ -794,7 +447,7 @@ ex dcode_sGCD(er e)
 
 ex dcode_sExtendedGCD(er e)
 {
-    size_t n = elength(e);
+    ulong n = elength(e);
     if (n == 2)
     {
         if (eis_int(echild(e,1)) && eis_int(echild(e,2)))
@@ -822,7 +475,7 @@ ex dcode_sLCM(er e)
 //std::cout << "dcode_sLCM: " << ex_tostring_full(e) << std::endl;
     assert(ehas_head_sym(e, gs.sym_sLCM.get()));
 
-    size_t n = elength(e);
+    ulong n = elength(e);
     if (n == 2)
     {
         er x = echild(e,1);
@@ -831,7 +484,7 @@ ex dcode_sLCM(er e)
         {
             ex Z = emake_int();
             fmpz_lcm(eint_data(Z), eint_data(x), eint_data(y));
-            return ereturn_int(Z);
+            return efix_int(Z);
         }
         else
         {
@@ -841,7 +494,7 @@ ex dcode_sLCM(er e)
     else
     {
         xfmpz t, g;
-        for (size_t i = 1; i <= n; i++)
+        for (ulong i = 1; i <= n; i++)
         {
             er x = echild(e,i);
             if (eis_int(x))

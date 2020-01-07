@@ -22,12 +22,10 @@ ex dcode_sMod(er e)
         if (eis_int(x) && eis_int(y))
         {
             if (fmpz_is_zero(eint_data(y)))
-            {
-                return emake_nan_Indeterminate();
-            }
-            ex Z = emake_int();
-            fmpz_fdiv_r(eint_data(Z), eint_data(x), eint_data(y));
-            return ereturn_int(Z);
+                return gs.const_indeterminate.copy();
+            ex z = emake_int();
+            fmpz_fdiv_r(eint_data(z), eint_data(x), eint_data(y));
+            return efix_int(z);
         }
         else if (eis_int(x) && eis_rat(y))
         {

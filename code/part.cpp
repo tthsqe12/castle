@@ -8,9 +8,7 @@ ex dcode_sPart(er e)
     assert(ehas_head_sym(e, gs.sym_sPart.get()));
 
     if (elength(e) == 0)
-    {
         return _handle_message_argm(e, 1);
-    }
 
     uex r(ecopychild(e,1));
     for (size_t n = 2; n <= elength(e); n++)
@@ -18,12 +16,12 @@ ex dcode_sPart(er e)
         er idx = echild(e, n);
         if (eis_node(r.get()))
         {
-            if (!eis_machine_int(idx))
+            if (!eis_intm(idx))
             {
                 _gen_message(gs.sym_sPart.get(), "pkspec1", NULL, ecopy(idx));
                 return ecopy(e);
             }
-            size_t i = eget_machine_int(idx);
+            ulong i = eintm_get(idx); // TODO
             if (i > elength(r.get()))
             {
                 _gen_message(gs.sym_sPart.get(), "partw", NULL, ecopy(idx), r.copy());
@@ -54,12 +52,12 @@ ex dcode_sPart(er e)
             }
             else
             {
-                if (!eis_machine_int(idx))
+                if (!eis_intm(idx))
                 {
                     _gen_message(gs.sym_sPart.get(), "pkspec1", NULL, ecopy(idx));
                     return ecopy(e);
                 }
-                size_t i = eget_machine_int(idx) - 1;
+                ulong i = eintm_get(idx) - 1;
                 if (i >= ehmap_data(r.get()).size())
                 {
                     _gen_message(gs.sym_sPart.get(), "partw", NULL, ecopy(idx), r.copy());
@@ -91,9 +89,7 @@ ex dcode_sFirst(er e)
     assert(ehas_head_sym(e, gs.sym_sFirst.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_node(X) && elength(X) > 0)
@@ -112,9 +108,7 @@ ex dcode_sLast(er e)
     assert(ehas_head_sym(e, gs.sym_sLast.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_node(X) && elength(X) > 0)

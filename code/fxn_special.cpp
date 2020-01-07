@@ -101,23 +101,18 @@ ex dcode_sZeta(er EE)
     else if (eis_real(echild(e.get(),1)))
     {
         er X = echild(e.get(),1);
-        xarb r;
-        uex x(ecopy(X));
+		ex z = emake_real();
         slong p = ereal_number(X).wprec();
-        arb_zeta(r.data, ereal_data(X), p + EXTRA_PRECISION_BASIC);
-        return emake_real_replace(x.release(), r);
+        arb_zeta(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+        return efix_real(z);
     }
     else if (eis_double(echild(e.get(),1)))
     {
         er X = echild(e.get(),1);
-        xarb z1, x1;
-        uex x(ecopy(X));
         slong p = 53;
-        arb_set_d(x1.data, edouble_number(X));
-        arb_zeta(z1.data, x1.data, p + EXTRA_PRECISION_BASIC);
-        double z = arf_get_d(arb_midref(z1.data), ARF_RND_NEAR);
-        ereplace_double(x, z);
-        return x.release();
+        arb_set_d(gs.tmpreal[7].data, edouble_number(X));
+        arb_zeta(gs.tmpreal[6].data, gs.tmpreal[7].data, p + EXTRA_PRECISION_BASIC);
+        return emake_double(arf_get_d(arb_midref(gs.tmpreal[6].data), ARF_RND_NEAR));
     }
     else
     {
@@ -234,10 +229,10 @@ ex dcode_sFibonacci(er e)
 
     if (elength(e) == 1)
     {
-        er e1 = echild(e,1);
-        if (eis_int(e1) && fmpz_fits_si(eint_data(e1)))
+        er x = echild(e,1);
+        if (eis_int(x) && fmpz_fits_si(eint_data(x)))
         {
-            slong n = fmpz_get_si(eint_data(e1));
+            slong n = fmpz_get_si(eint_data(x));
             ex z = emake_int();
             if (n >= 0)
             {
@@ -247,19 +242,21 @@ ex dcode_sFibonacci(er e)
             {
                 fmpz_fib_ui(eint_data(z), -n);
                 if (n % 2 == 0)
-                {
                     fmpz_neg(eint_data(z), eint_data(z));
-                }
             }
-            return ereturn_int(z);
+            return efix_int(z);
         }
         else
         {
             return ecopy(e);
         }
     }
-    else
-    {
+    else if (elength(e) == 2)
+	{
         return ecopy(e);
     }
+	else
+	{
+		return _handle_message_argt(e, (1 << 0) + (2 << 8));
+	}
 }

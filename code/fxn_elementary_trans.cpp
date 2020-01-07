@@ -81,7 +81,7 @@ ex arb_imag_cos(ex Y)
     uex wx(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_cosh(ereal_data(wx.get()), ereal_data(Y), p);
-    return ereturn_real(wx.release());
+    return efix_real(wx.release());
 }
 
 ex cmplx_sin(double x, double y)
@@ -107,7 +107,7 @@ ex arb_imag_sin(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_sinh(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -133,7 +133,7 @@ ex arb_imag_cosh(ex Y)
     uex wx(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_cos(ereal_data(wx.get()), ereal_data(Y), p);
-    return ereturn_real(wx.release());
+    return efix_real(wx.release());
 }
 
 ex cmplx_sinh(double x, double y)
@@ -155,7 +155,7 @@ ex arb_imag_sinh(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_sin(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -178,7 +178,7 @@ ex arb_imag_tan(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_tanh(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -201,7 +201,7 @@ ex arb_imag_tanh(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_tan(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -314,7 +314,7 @@ ex arb_imag_asin(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_asinh(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -362,7 +362,7 @@ ex arb_imag_asinh(ex Y)
         uex pi(emake_real());
         arb_const_pi(ereal_data(pi.get()), p);
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(t, pi.release());
     }
     arb_neg(one.data, one.data);
@@ -375,11 +375,11 @@ ex arb_imag_asinh(ex Y)
         arb_const_pi(ereal_data(pi.get()), p);
         arb_neg(ereal_data(pi.get()), ereal_data(pi.get()));
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(t, pi.release());
     }
     arb_asin(ereal_data(Z), ereal_data(Y), p);
-    ex t = ereturn_real(z.release());
+    ex t = efix_real(z.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -434,7 +434,7 @@ ex arb_imag_atan(ex Y)
         uex pi(emake_real());
         arb_const_pi(ereal_data(pi.get()), p);
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(pi.release(), t);
     }
     arb_neg(one.data, one.data);
@@ -451,7 +451,7 @@ ex arb_imag_atan(ex Y)
         arb_const_pi(ereal_data(pi.get()), p);
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
         arb_neg(ereal_data(pi.get()), ereal_data(pi.get()));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(pi.release(), t);
     }
     bool negate = arb_is_negative(ereal_data(Y));
@@ -468,7 +468,7 @@ ex arb_imag_atan(ex Y)
     if (negate)
         arb_neg(ereal_data(Z), ereal_data(Z));
     arb_mul_2exp_si(ereal_data(Z), ereal_data(Z), -WORD(1));
-    ex t = ereturn_real(z.release());
+    ex t = efix_real(z.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -496,7 +496,7 @@ ex arb_imag_atanh(ex Y)
     uex wy(emake_real());
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     arb_atan(ereal_data(wy.get()), ereal_data(Y), p);
-    ex t = ereturn_real(wy.release());
+    ex t = efix_real(wy.release());
     return emake_cmplx(emake_cint(0), t);
 }
 
@@ -810,17 +810,14 @@ ex dcode_sExp(er e)
             }
             case ETYPE_DOUBLE:
             {
-                ex z = emake_double();
-                edouble_number(z) = exp(edouble_number(X));
-                return ereturn_double(z);
+                return emake_double(exp(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_exp(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_exp(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -897,9 +894,7 @@ ex dcode_sLog(er e)
     assert(ehas_head_sym(e, gs.sym_sLog.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -910,7 +905,7 @@ ex dcode_sLog(er e)
             {
                 if (fmpz_is_zero(eint_data(X)))
                 {
-                    return emake_nan_ComplexInfinity();
+                    return gs.const_minfinity.copy();
                 }
                 else if (fmpz_is_one(eint_data(X)))
                 {
@@ -937,12 +932,12 @@ ex dcode_sLog(er e)
                 else if (d < 0)
                 {
                     edouble_number(z) = log(-d);
-                    return emake_cmplx(z, ecopy(gs.const_double_pi.get()));
+                    return emake_cmplx(z, gs.const_double_pi.copy());
                 }
                 else
                 {
                     eclear(z);
-                    return emake_nan_Indeterminate();
+                    return gs.const_indeterminate.copy();
                 }
             }
             case ETYPE_REAL:
@@ -953,7 +948,7 @@ ex dcode_sLog(er e)
                 if (arb_is_positive(ereal_data(X)))
                 {
                     arb_log(ereal_data(Z), ereal_data(X), p);
-                    return ereturn_real(z.release());
+                    return efix_real(z.release());
                 }
                 else if (arb_is_negative(ereal_data(X)))
                 {
@@ -961,7 +956,7 @@ ex dcode_sLog(er e)
                     arb_log(ereal_data(Z), ereal_data(Z), p);
                     uex pi(emake_real());
                     arb_const_pi(ereal_data(pi.get()), ereal_number(z.get()).wprec());
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(t, pi.release());
                 }
                 else
@@ -1004,14 +999,10 @@ ex dcode_sCos(er e)
         {
             case ETYPE_INT:
             {
-                if (fmpz_is_zero(eto_int(X)->number.data))
-                {
+                if (fmpz_is_zero(eint_data(X)))
                     return emake_cint(1);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1019,17 +1010,14 @@ ex dcode_sCos(er e)
             }
             case ETYPE_DOUBLE:
             {
-                uex x(ecopy(X));
-                ereplace_double(x, cos(eto_double(X)->number));
-                return x.release();
+				return emake_double(cos(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+                ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_cos(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_cos(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1061,9 +1049,7 @@ ex dcode_sSin(er e)
     assert(ehas_head_sym(e, gs.sym_sSin.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1073,13 +1059,9 @@ ex dcode_sSin(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_cint(0);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1087,17 +1069,14 @@ ex dcode_sSin(er e)
             }
             case ETYPE_DOUBLE:
             {
-                uex x(ecopy(X));
-                ereplace_double(x, sin(eto_double(X)->number));
-                return x.release();
+                return emake_double(sin(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_sin(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_sin(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1129,9 +1108,7 @@ ex dcode_sCosh(er e)
     assert(ehas_head_sym(e, gs.sym_sCosh.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1141,13 +1118,9 @@ ex dcode_sCosh(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_cint(1);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1155,17 +1128,14 @@ ex dcode_sCosh(er e)
             }
             case ETYPE_DOUBLE:
             {
-                uex x(ecopy(X));
-                ereplace_double(x, sinh(eto_double(X)->number));
-                return x.release();
+                return emake_double(sinh(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_sinh(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_sinh(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1196,9 +1166,7 @@ ex dcode_sSinh(er e)
     assert(ehas_head_sym(e, gs.sym_sSinh.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1208,13 +1176,9 @@ ex dcode_sSinh(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_cint(0);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1222,17 +1186,14 @@ ex dcode_sSinh(er e)
             }
             case ETYPE_DOUBLE:
             {
-                uex x(ecopy(X));
-                ereplace_double(x, sinh(eto_double(X)->number));
-                return x.release();
+                return emake_double(sinh(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_sinh(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_sinh(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1264,9 +1225,7 @@ ex dcode_sTan(er e)
     assert(ehas_head_sym(e, gs.sym_sTan.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1276,13 +1235,9 @@ ex dcode_sTan(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_cint(0);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1290,17 +1245,14 @@ ex dcode_sTan(er e)
             }
             case ETYPE_DOUBLE:
             {
-                uex x(ecopy(X));
-                ereplace_double(x, tan(eto_double(X)->number));
-                return x.release();
+                emake_double(tan(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_tan(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_tan(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1332,9 +1284,7 @@ ex dcode_sTanh(er e)
     assert(ehas_head_sym(e, gs.sym_sTanh.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1344,13 +1294,9 @@ ex dcode_sTanh(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_cint(0);
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1358,17 +1304,14 @@ ex dcode_sTanh(er e)
             }
             case ETYPE_DOUBLE:
             {
-                double d = edouble_number(X);
-                eclear(ecopy(e));
-                return emake_double(tanh(d));
+                return emake_double(std::tanh(edouble_number(X)));
             }
             case ETYPE_REAL:
             {
-                xarb c;
-                uex x(ecopy(X));
+				ex z = emake_real();
                 slong p = ereal_number(X).wprec();
-                arb_tanh(c.data, eto_real(X)->number.data, p + EXTRA_PRECISION_BASIC);
-                return emake_real_replace(x.release(), c);
+                arb_tanh(ereal_data(z), ereal_data(X), p + EXTRA_PRECISION_BASIC);
+                return efix_real(z);
             }
             case ETYPE_CMPLX:
             {
@@ -1397,9 +1340,7 @@ ex dcode_sTanh(er e)
 ex dcode_sLog10(er e)
 {
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     return ecopy(e);
 }
@@ -1411,9 +1352,7 @@ ex dcode_sArcCos(er e)
     assert(ehas_head_sym(e, gs.sym_sArcCos.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1423,13 +1362,9 @@ ex dcode_sArcCos(er e)
             case ETYPE_INT:
             {
                 if (fmpz_is_zero(eint_data(X)))
-                {
                     return emake_node(gs.sym_sTimes.copy(), emake_crat(1,2), gs.sym_sPi.copy());
-                }
                 else
-                {
                     return ecopy(e);
-                }
             }
             case ETYPE_RAT:
             {
@@ -1444,7 +1379,7 @@ ex dcode_sArcCos(er e)
                 }
                 if (d < -1)
                 {
-                    return emake_cmplx(ecopy(gs.const_double_pi.get()), emake_double(-std::acosh(-d)));
+                    return emake_cmplx(gs.const_double_pi.copy(), emake_double(-std::acosh(-d)));
                 }
                 return emake_double(acos(d));
             }
@@ -1458,7 +1393,7 @@ ex dcode_sArcCos(er e)
                 if (arb_gt(ereal_data(X), one.data))
                 {
                     arb_acosh(ereal_data(Z), ereal_data(X), p);
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(emake_cint(0), t);
                 }
                 arb_neg(one.data, one.data);
@@ -1469,11 +1404,11 @@ ex dcode_sArcCos(er e)
                     arb_neg(ereal_data(Z), ereal_data(Z));
                     uex pi(emake_real());
                     arb_const_pi(ereal_data(pi.get()), ereal_number(z.get()).wprec());
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(pi.release(), t);
                 }
                 arb_acos(ereal_data(Z), ereal_data(X), p);
-                return ereturn_real(z.release());
+                return efix_real(z.release());
             }
             case ETYPE_CMPLX:
             {
@@ -1504,9 +1439,7 @@ ex dcode_sArcCosh(er e)
     assert(ehas_head_sym(e, gs.sym_sArcCosh.get()));
 
     if (elength(e) != 1)
-    {
         return _handle_message_argx1(e);
-    }
 
     er X = echild(e,1);
     if (eis_number(X))
@@ -1555,7 +1488,7 @@ ex dcode_sArcCosh(er e)
                 if (arb_ge(ereal_data(X), one.data))
                 {
                     arb_acosh(ereal_data(Z), ereal_data(X), p);
-                    return ereturn_real(z.release());
+                    return efix_real(z.release());
                 }
                 arb_neg(one.data, one.data);
                 if (arb_le(ereal_data(X), one.data))
@@ -1564,11 +1497,11 @@ ex dcode_sArcCosh(er e)
                     arb_acosh(ereal_data(Z), ereal_data(Z), p);
                     uex pi(emake_real());
                     arb_const_pi(ereal_data(pi.get()), ereal_number(z.get()).wprec());
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(t, pi.release());
                 }
                 arb_acos(ereal_data(Z), ereal_data(X), p);
-                ex t = ereturn_real(z.release());
+                ex t = efix_real(z.release());
                 return emake_cmplx(emake_cint(0), t);
             }
             case ETYPE_CMPLX:
@@ -1655,7 +1588,7 @@ ex dcode_sArcSin(er e)
                     uex pi(emake_real());
                     arb_const_pi(ereal_data(pi.get()), ereal_number(z.get()).wprec());
                     arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(pi.release(), t);
                 }
                 arb_neg(one.data, one.data);
@@ -1667,11 +1600,11 @@ ex dcode_sArcSin(er e)
                     arb_const_pi(ereal_data(pi.get()), ereal_number(z.get()).wprec());
                     arb_neg(ereal_data(pi.get()), ereal_data(pi.get()));
                     arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-                    ex t = ereturn_real(z.release());
+                    ex t = efix_real(z.release());
                     return emake_cmplx(pi.release(), t);
                 }
                 arb_asin(ereal_data(Z), ereal_data(X), p);
-                return ereturn_real(z.release());
+                return efix_real(z.release());
             }
             case ETYPE_CMPLX:
             {
@@ -1737,7 +1670,7 @@ ex dcode_sArcSinh(er e)
                 slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
                 ex Z = emake_real();
                 arb_asinh(ereal_data(Z), ereal_data(X), p);
-                return ereturn_real(Z);
+                return efix_real(Z);
             }
             case ETYPE_CMPLX:
             {
@@ -1823,7 +1756,7 @@ ex dcode_sArcTan(er e)
                 slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
                 ex Z = emake_real();
                 arb_atan(ereal_data(Z), ereal_data(X), p);
-                return ereturn_real(Z);
+                return efix_real(Z);
             }
             case ETYPE_CMPLX:
             {
@@ -1868,7 +1801,7 @@ ex arb_real_atanh(ex X)
         arb_const_pi(ereal_data(pi.get()), p);
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
         arb_neg(ereal_data(pi.get()), ereal_data(pi.get()));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(t, pi.release());
     }
     arb_neg(one.data, one.data);
@@ -1884,7 +1817,7 @@ ex arb_real_atanh(ex X)
         uex pi(emake_real());
         arb_const_pi(ereal_data(pi.get()), p);
         arb_mul_2exp_si(ereal_data(pi.get()), ereal_data(pi.get()), -WORD(1));
-        ex t = ereturn_real(z.release());
+        ex t = efix_real(z.release());
         return emake_cmplx(t, pi.release());
     }
     bool negate = arb_is_negative(ereal_data(X));
@@ -1901,7 +1834,7 @@ ex arb_real_atanh(ex X)
     if (negate)
         arb_neg(ereal_data(Z), ereal_data(Z));
     arb_mul_2exp_si(ereal_data(Z), ereal_data(Z), -WORD(1));
-    return ereturn_real(z.release());
+    return efix_real(z.release());
 }
 
 ex dcode_sArcTanh(er e)

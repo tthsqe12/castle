@@ -2,6 +2,7 @@
 #include "code.h"
 #include "eval.h"
 #include "code/local.h"
+#include "ex_cont.h"
 
 /* return
     nullptr for failure (bad input)
@@ -95,6 +96,7 @@ static ex dcode_sTable_nested(er e, size_t pos)
                     }
                 }
             }
+			r.setnz(econvert_parray_shallow(r.get()));
             return r.release();
         }
         else
@@ -156,6 +158,7 @@ static ex dcode_sTable_nested(er e, size_t pos)
                     }
                 }
             }
+			r.setnz(econvert_parray_shallow(r.get()));
             return r.release();
         }
     }
@@ -211,6 +214,7 @@ static ex dcode_sTable_nested(er e, size_t pos)
         }
     }
 
+	r.setnz(econvert_parray_shallow(r.get()));
     return r.release();
 }
 
