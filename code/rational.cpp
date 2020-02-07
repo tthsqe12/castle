@@ -543,6 +543,83 @@ ex dcode_iRealContinuedFraction(er e)
     return emake_node(gs.sym_sList.copy(), r.release(), m);
 }
 
+ex dcode_iQuadraticContinuedFraction(er e)
+{
+    if (elength(e) != 3
+        || !eis_int(echild(e,1))
+        || !eis_int(echild(e,2))
+        || !eis_int(echild(e,3)))
+    {
+        return ecopy(e);
+    }
+
+    xfmpz a(eint_data(echild(e,1)));
+    xfmpz b(eint_data(echild(e,2)));
+    xfmpz c(eint_data(echild(e,3)));
+    xfmpz d, s, t, m, A, B, C;
+
+    fmpz_mul(m.data, b.data, b.data);
+    fmpz_mul(t.data, a.data, c.data);
+    fmpz_addmul_ui(m.data, t.data, 4);
+
+    if (fmpz_sgn(m.data) <= 0)
+        return ecopy(e);
+    fmpz_sqrtrem(d.data, t.data, m.data);
+    if (fmpz_is_zero(t.data))
+        return ecopy(e);
+
+    std::vector<wex> ans1;
+    std::vector<wex> ans2;
+
+    while (fmpz_sgn(a.data) <= 0
+           || fmpz_sgn(c.data) <= 0
+           || (fmpz_sub(t.data, a.data, c.data),
+               fmpz_abs(t.data, t.data),
+               fmpz_cmp(b.data, t.data) <= 0))
+    {
+        fmpz_add(t.data, b.data, d.data);
+        if (fmpz_sgn(a.data) > 0)
+        {
+            fmpz_fdiv_q(m.data, t.data, a.data);
+            fmpz_fdiv_q_2exp(m.data, m.data, 1);
+        }
+        else
+        {
+            fmpz_cdiv_q(m.data, t.data, a.data);
+            fmpz_cdiv_q_2exp(m.data, m.data, 1);
+            fmpz_sub_ui(m.data, m.data, 1);
+        }
+        fmpz_mul(t.data, a.data, m.data);
+        fmpz_sub(s.data, b.data, t.data);
+        fmpz_addmul(c.data, s.data, m.data);
+        fmpz_mul_2exp(t.data, t.data, 1);
+        fmpz_sub(b.data, t.data, b.data);
+        fmpz_swap(a.data, c.data);
+        ans1.push_back(wex(emake_int_copy(m.data)));
+    }
+
+    fmpz_set(A.data, a.data);
+    fmpz_set(B.data, b.data);
+    fmpz_set(C.data, c.data);
+
+    do {
+        fmpz_add(t.data, b.data, d.data);
+        fmpz_fdiv_q(m.data, t.data, a.data);
+        fmpz_fdiv_q_2exp(m.data, m.data, 1);
+        fmpz_mul(t.data, a.data, m.data);
+        fmpz_sub(s.data, b.data, t.data);
+        fmpz_addmul(c.data, s.data, m.data);
+        fmpz_mul_2exp(t.data, t.data, 1);
+        fmpz_sub(b.data, t.data, b.data);
+        fmpz_swap(a.data, c.data);
+        ans2.push_back(wex(emake_int_copy(m.data)));
+    }
+    while (!fmpz_equal(A.data, a.data) || !fmpz_equal(B.data, b.data));
+
+    ans1.push_back(wex(emake_node(gs.sym_sList.copy(), ans2)));
+    return emake_node(gs.sym_sList.copy(), ans1);
+}
+
 
 ex dcode_sContinuedFraction(er e)
 {

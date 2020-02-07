@@ -50,25 +50,29 @@ ex dcode_sWhich(er e)
 
     for (ulong i = 0; i < n; i += 2)
     {
-        ex c = eval(ecopychild(e, i + 1));
-        eclear(c); // dirty but OK
+        er b = echild(e, i + 1);
+        ex c = eval(ecopy(b));
         if (eis_sym(c, gs.sym_sTrue.get()))
         {
+            eclear(c);
             return ecopychild(e, i + 2);
         }
         else if (eis_sym(c, gs.sym_sFalse.get()))
         {
+            eclear(c);
             continue;
         }
-        else if (i > 0)
+        else if (i > 0 || etor(c) != b)
         {
             uex r(echild(e,0), n - i);
-            for (; i < n; i++)
+            r.push_back(c);        
+            for (i++; i < n; i++)
                 r.push_back(ecopychild(e, i + 1));
             return r.release();
         }
         else
         {
+            eclear(c);
             return ecopy(e);
         }
     }

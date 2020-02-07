@@ -9,6 +9,281 @@
 #include "hash.h"
 #include "arithmetic.h"
 #include "polynomial.h"
+#include "flint/fmpz_poly.h"
+
+void fmpz_poly_inflate(fmpz_poly_t result,
+                                      const fmpz_poly_t input, ulong inflation)
+{
+    if (input->length <= 1 || inflation == 1)
+    {
+        fmpz_poly_set(result, input);
+    }
+    else if (inflation == 0)
+    {
+        fmpz_t v;
+        fmpz_init_set_ui(v, 1);
+        fmpz_poly_evaluate_fmpz(v, input, v);
+        fmpz_poly_zero(result);
+        fmpz_poly_set_coeff_fmpz(result, 0, v);
+        fmpz_clear(v);
+    }
+    else
+    {
+        slong i, j, res_length = (input->length - 1) * inflation + 1;
+
+        fmpz_poly_fit_length(result, res_length);
+
+        for (i = input->length - 1; i > 0; i--)
+        {
+            fmpz_set(result->coeffs + (i * inflation), input->coeffs + i);
+            for (j = i * inflation - 1; j > (i - 1) * inflation; j--)
+                fmpz_zero(result->coeffs + j);
+        }
+        fmpz_set(result->coeffs + 0, input->coeffs + 0);
+        result->length = res_length;
+    }
+}
+
+
+
+
+
+class qbarelem {
+public:
+    xfmpz_poly minpoly;
+    xacb location;
+
+    bool set_ex(er e);
+    void set(slong a);
+    void set(const fmpz_t a);
+    void set(const fmpq_t a);
+    bool add(const qbarelem & a, const qbarelem & b);
+    bool sub(const qbarelem & a, const qbarelem & b);
+    bool mul(const qbarelem & a, const qbarelem & b);
+    bool powerby(const fmpz_t a);
+    bool powerby(const fmpq_t a);
+
+    void swap(qbarelem & a) {
+        fmpz_poly_swap(minpoly.data, a.minpoly.data);
+        acb_swap(location.data, a.location.data);
+    }
+
+    std::string tostring() const {
+        return "Root[" + minpoly.tostring() + ", " + location.tostring(20) + "]";
+    }
+};
+
+void qbarelem::set(slong a)
+{
+    fmpz_poly_fit_length(minpoly.data, 2);
+    fmpz_set_si(minpoly.data->coeffs + 0, a);
+    fmpz_neg(minpoly.data->coeffs + 0, minpoly.data->coeffs + 0);
+    fmpz_one(minpoly.data->coeffs + 1);
+    _fmpz_poly_set_length(minpoly.data, 2);
+}
+
+void qbarelem::set(const fmpz_t a)
+{
+    fmpz_poly_fit_length(minpoly.data, 2);
+    fmpz_neg(minpoly.data->coeffs + 0, a);
+    fmpz_one(minpoly.data->coeffs + 1);
+    _fmpz_poly_set_length(minpoly.data, 2);
+}
+
+void qbarelem::set(const fmpq_t a)
+{
+    fmpz_poly_fit_length(minpoly.data, 2);
+    fmpz_neg(minpoly.data->coeffs + 0, fmpq_numref(a));
+    fmpz_set(minpoly.data->coeffs + 1, fmpq_denref(a));
+    _fmpz_poly_set_length(minpoly.data, 2);
+}
+
+bool qbarelem::add(const qbarelem & a, const qbarelem & b)
+{
+std::cout << "adding " << b.tostring() << " + " << a.tostring() << std::endl;
+
+    slong ad = fmpz_poly_degree(a.minpoly.data);
+    slong bd = fmpz_poly_degree(b.minpoly.data);
+    slong rd = ad*bd;
+
+    x_fmpz_vector xs, ys;
+    _fmpz_vector_fit_length(xs.data, rd + 1);
+    _fmpz_vector_fit_length(ys.data, rd + 1);
+
+    xfmpz_poly bshift;
+    fmpz_poly_set(bshift.data, b.minpoly.data);
+    for (slong i = 1; i <= bd; i += 2)
+        fmpz_neg(bshift.data->coeffs + i, bshift.data->coeffs + i);
+
+    for (slong i = 0; i <= rd; i++)
+    {
+        fmpz_set_si(xs.data->array + i, i);
+        fmpz_poly_resultant(ys.data->array + i, a.minpoly.data, bshift.data);
+        if (i < rd)
+            _fmpz_poly_taylor_shift(bshift.data->coeffs, eget_cint_data(-1), bd + 1);
+    }
+
+    fmpz_poly_interpolate_fmpz_vec(minpoly.data, xs.data->array, ys.data->array, rd + 1);
+
+    return true;
+}
+
+bool qbarelem::mul(const qbarelem & a, const qbarelem & b)
+{
+std::cout << "multiplying " << tostring() << " with " << a.tostring() << std::endl;
+    if (fmpz_is_zero(a.minpoly.data->coeffs + 0) || fmpz_is_zero(b.minpoly.data->coeffs + 0))
+    {
+        set(slong(0));
+        return true;
+    }
+
+    slong ad = fmpz_poly_degree(a.minpoly.data);
+    slong bd = fmpz_poly_degree(b.minpoly.data);
+    slong rd = ad*bd;
+
+    x_fmpz_vector xs, ys;
+    _fmpz_vector_fit_length(xs.data, rd + 1);
+    _fmpz_vector_fit_length(ys.data, rd + 1);
+
+    xfmpz acc;
+    xfmpz_poly bshift;
+    fmpz_poly_fit_length(bshift.data, bd + 1);
+    _fmpz_poly_set_length(bshift.data, bd + 1);
+    
+    for (slong i = 0; i <= rd; i++)
+    {
+        slong scale = (i & 1) ? -(i/2 + 1) : i/2 + 1;
+        fmpz_set_si(xs.data->array + i, scale);
+        fmpz_one(acc.data);
+        for (slong j = 0; j <= bd; j++)
+        {
+            fmpz_mul(bshift.data->coeffs + bd - j, b.minpoly.data->coeffs + j, acc.data);
+            fmpz_mul_si(acc.data, acc.data, scale);
+        }
+        fmpz_poly_resultant(ys.data->array + i, a.minpoly.data, bshift.data);
+    }
+
+    fmpz_poly_interpolate_fmpz_vec(minpoly.data, xs.data->array, ys.data->array, rd + 1);
+
+    return true;
+}
+
+bool qbarelem::powerby(const fmpz_t a)
+{
+std::cout << "powering " << tostring(); printf(" by "); fmpz_print(a); printf("\n");
+    return true;
+}
+
+bool qbarelem::powerby(const fmpq_t a)
+{
+std::cout << "powering " << tostring(); printf(" by "); fmpq_print(a); printf("\n");
+
+    if (COEFF_IS_MPZ(*fmpq_denref(a)))
+        return false;
+
+    fmpz_poly_inflate(minpoly.data, minpoly.data, *fmpq_denref(a));
+
+    return true;
+}
+
+
+bool qbarelem::set_ex(er e)
+{
+/*
+std::cout << "set_ex called e: " << ex_tostring_full(e) << std::endl;
+*/
+    if (eis_int(e))
+    {
+        set(eint_data(e));
+        return true;
+    }
+    else if (eis_rat(e))
+    {
+        set(erat_data(e));
+        return true;
+    }
+    else if (!eis_node(e))
+    {
+        return false;
+    }
+
+    qbarelem s, t;
+
+    if (ehas_head_sym(e, gs.sym_sPlus.get()))
+    {
+        set(slong(0));
+        for (ulong i = 0; i < elength(e); i++)
+        {
+            if (!t.set_ex(echild(e, i + 1)))
+                return false;
+            swap(s);
+            add(s, t);
+        }
+        return true;
+    }
+    else if (ehas_head_sym(e, gs.sym_sTimes.get()))
+    {
+        set(slong(1));
+        for (ulong i = 0; i < elength(e); i++)
+        {
+            if (!t.set_ex(echild(e, i + 1)))
+                return false;
+            swap(s);
+            mul(s, t);
+        }
+        return true;
+    }
+    else if (ehas_head_sym_length(e, gs.sym_sPower.get(), 2))
+    {
+        if (eis_int(echild(e,2)))
+        {
+            if (!set_ex(echild(e,1)))
+                return false;
+            powerby(eint_data(echild(e,2)));
+            return true;
+        }
+        else if (eis_rat(echild(e,2)))
+        {
+            if (!set_ex(echild(e,1)))
+                return false;
+            powerby(erat_data(echild(e,2)));
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+
+ex dcode_sRootReduce(er e)
+{
+std::cout << "dcode_sRootReduce: " << ex_tostring_full(e) << std::endl;
+    assert(ehas_head_sym(e, gs.sym_sRootReduce.get()));
+
+    if (elength(e) != 1)
+    {
+        return _handle_message_argx1(e);
+    }
+
+    qbarelem r;
+
+    if (r.set_ex(echild(e,1)))
+    {
+std::cout << "RootReduce success: " << r.tostring() << std::endl;
+    }
+
+    return ecopy(e);
+}
+
+
+
 
 
 static ex _galois_group_order_irr3(xfmpq_poly &p)
