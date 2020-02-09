@@ -65,7 +65,7 @@ ex dcode_sWhich(er e)
         else if (i > 0 || etor(c) != b)
         {
             uex r(echild(e,0), n - i);
-            r.push_back(c);        
+            r.push_back(c);
             for (i++; i < n; i++)
                 r.push_back(ecopychild(e, i + 1));
             return r.release();
