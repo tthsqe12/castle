@@ -12,81 +12,124 @@
 #include "flint/fmpz_poly.h"
 #include "arb_fmpz_poly.h"
 
-/* copy the midpoint and set the radius */
-void acb_set_radius(acb_t y, const acb_t x, const mag_t e)
-{
-    arf_set(arb_midref(acb_realref(y)), arb_midref(acb_realref(x)));
-    mag_set(arb_radref(acb_realref(y)), e);
-    arf_set(arb_midref(acb_imagref(y)), arb_midref(acb_imagref(x)));
-    mag_set(arb_radref(acb_imagref(y)), e);
-}
+/* wp = working precision */
 
-/* can we not safely rule out x as a root of f */
-bool could_be_root(const acb_t x, const fmpz_poly_t f)
+slong binary_wp(const acb_t a, const acb_t b)
 {
-    xacb f_eval;
-    slong p = acb_rel_accuracy_bits(x);
-    p = std::max(p, slong(100));
-    arb_fmpz_poly_evaluate_acb(f_eval.data, f, x, p);
-    return acb_contains_zero(f_eval.data);
-}
-
-/* if true, newton converges to the unique root in x.mid +/- e */
-bool newton_is_ok(const acb_t x, const fmpz_poly_t f, mag_t e)
-{
-    xfmpz_poly fp, fpp;
-    xacb y, f_eval, fp_eval, fpp_eval;
-    xmag a0, b0, c, t;
-    slong p = acb_rel_accuracy_bits(x);
+    slong pa = acb_rel_accuracy_bits(a);
+    slong pb = acb_rel_accuracy_bits(b);
+    slong p = std::max(pa, pb);
     p = std::min(p + 100, slong(ARF_PREC_EXACT));
     p = std::max(p, slong(100));
+    return p;
+}
+
+slong unary_wp(const acb_t a)
+{
+    slong p = acb_rel_accuracy_bits(a);
+    p = std::min(p + 100, slong(ARF_PREC_EXACT));
+    p = std::max(p, slong(100));
+    return p;
+}
+
+
+#define RE(x) (&(x)->real)
+#define IM(x) (&(x)->imag)
+
+/* if true, newton converges to the unique root in y from any starting value in x */
+bool newton_test(acb_t y, const acb_t x, const fmpz_poly_t f)
+{
+    xfmpz_poly fp, fpp;
+    xacb f_eval, fp_eval, fpp_eval;
+    xmag a0, b0, c, t, e;
+    slong p = unary_wp(x);
 
     fmpz_poly_derivative(fp.data, f);
-    arb_fmpz_poly_evaluate_acb(fp_eval.data, fp.data, x, p);
-    acb_get_mag_lower(a0.data, fp_eval.data);
-
-    arb_fmpz_poly_evaluate_acb(f_eval.data, f, x, p);
-    acb_get_mag(b0.data, f_eval.data);
-    mag_div(b0.data, b0.data, a0.data);
-
-    if (!mag_is_finite(b0.data))
-        return false;
-
-    mag_mul_2exp_si(e, b0.data, 1);
-    mag_max(e, e, arb_radref(acb_realref(x)));
-    mag_max(e, e, arb_radref(acb_imagref(x)));
-
     fmpz_poly_derivative(fpp.data, fp.data);
-    acb_set_radius(y.data, x, e);
-    arb_fmpz_poly_evaluate_acb(fpp_eval.data, fpp.data, y.data, p);
-    acb_get_mag(c.data, fpp_eval.data);
+
+    if (arb_is_zero(IM(x)))
+    {
+        arb_fmpz_poly_evaluate_arb(RE(fp_eval.data), fp.data, RE(x), p);
+        arb_get_mag_lower(a0.data, RE(fp_eval.data));
+
+        arb_fmpz_poly_evaluate_arb(RE(f_eval.data), f, RE(x), p);
+        arb_get_mag(b0.data, RE(f_eval.data));
+        mag_div(b0.data, b0.data, a0.data);
+
+        mag_mul_2exp_si(e.data, b0.data, 1);
+        mag_max(e.data, e.data, arb_radref(RE(x)));
+
+        arf_set(arb_midref(RE(y)), arb_midref(RE(x)));
+        mag_set(arb_radref(RE(y)), e.data);
+        arb_zero(IM(y));
+
+        arb_fmpz_poly_evaluate_arb(RE(fpp_eval.data), fpp.data, RE(y), p);
+        arb_get_mag(c.data, RE(fpp_eval.data));
+    }
+    else
+    {
+        arb_fmpz_poly_evaluate_acb(fp_eval.data, fp.data, x, p);
+        acb_get_mag_lower(a0.data, fp_eval.data);
+
+        arb_fmpz_poly_evaluate_acb(f_eval.data, f, x, p);
+        acb_get_mag(b0.data, f_eval.data);
+        mag_div(b0.data, b0.data, a0.data);
+
+        mag_mul_2exp_si(e.data, b0.data, 1);
+        mag_max(e.data, e.data, arb_radref(RE(x)));
+        mag_max(e.data, e.data, arb_radref(IM(x)));
+
+        arf_set(arb_midref(RE(y)), arb_midref(RE(x)));
+        arf_set(arb_midref(IM(y)), arb_midref(IM(x)));
+        mag_set(arb_radref(RE(y)), e.data);
+        mag_set(arb_radref(IM(y)), e.data);
+        arb_fmpz_poly_evaluate_acb(fpp_eval.data, fpp.data, y, p);
+        acb_get_mag(c.data, fpp_eval.data);
+    }
 
     mag_mul(c.data, c.data, b0.data);
     mag_div(c.data, c.data, a0.data);
-    return mag_cmp_2exp_si(c.data, -5) < 0;
+    return mag_is_finite(b0.data) && mag_cmp_2exp_si(c.data, -5) < 0;
 }
+
 
 /* advance x by one iteration of newton's method */
 void newton_step(acb_t x, const fmpz_poly_t f)
 {
     xfmpz_poly fp;
-    xacb t, y, f_eval, fp_eval;
-    slong p = acb_rel_accuracy_bits(x);
-    p = std::max(p, slong(100));
-
-    acb_set(y.data, x);
-    if (p < ARF_PREC_EXACT)
-    {
-        mag_mul_2exp_si(arb_radref(acb_realref(y.data)), arb_radref(acb_realref(y.data)), -p);
-        mag_mul_2exp_si(arb_radref(acb_realref(y.data)), arb_radref(acb_realref(y.data)), -p);
-        p = std::min(2*p, slong(ARF_PREC_EXACT));
-    }
+    xacb t, z, f_eval, fp_eval;
+    slong p = unary_wp(x);
 
     fmpz_poly_derivative(fp.data, f);
-    arb_fmpz_poly_evaluate_acb(f_eval.data, f, y.data, p);
-    arb_fmpz_poly_evaluate_acb(fp_eval.data, fp.data, y.data, p);
-    acb_div(t.data, f_eval.data, fp_eval.data, p);
-    acb_sub(x, y.data, t.data, p);
+
+    arf_set(arb_midref(RE(z.data)), arb_midref(RE(x)));
+    mag_mul_2exp_si(arb_radref(RE(z.data)), arb_radref(RE(x)), -p);
+    p = std::min(2*p, slong(ARF_PREC_EXACT));
+
+    if (arb_is_zero(IM(x)))
+    {
+        arb_fmpz_poly_evaluate_arb(RE(f_eval.data), f, RE(z.data), p);
+        arb_fmpz_poly_evaluate_arb(RE(fp_eval.data), fp.data, RE(z.data), p);
+        arb_div(RE(t.data), RE(f_eval.data), RE(fp_eval.data), p);
+        arb_sub(RE(x), RE(z.data), RE(t.data), p);
+    }
+    else
+    {
+        arf_set(arb_midref(IM(z.data)), arb_midref(IM(x)));
+        mag_mul_2exp_si(arb_radref(IM(z.data)), arb_radref(IM(x)), -p);
+
+        arb_fmpz_poly_evaluate_acb(f_eval.data, f, z.data, p);
+        arb_fmpz_poly_evaluate_acb(fp_eval.data, fp.data, z.data, p);
+        acb_div(t.data, f_eval.data, fp_eval.data, p);
+        acb_sub(x, z.data, t.data, p);
+    }
+
+    /*
+        Theoretically x should have moved closer to the root. We have no
+        control over whether this has actually happened as it is up to the
+        working precision and implementation details of arb.
+        TODO: ensure that newton_test returns true with a smaller ball y.
+    */
 }
 
 
@@ -137,9 +180,9 @@ void qbarelem::set(slong a)
     fmpz_one(minpoly.data->coeffs + 1);
     _fmpz_poly_set_length(minpoly.data, 2);
 
-    arf_set_si(arb_midref(acb_realref(location.data)), a);
-    mag_set_ui_2exp_si(arb_radref(acb_realref(location.data)), 1, -FLINT_BITS);
-    arb_zero(acb_imagref(location.data));
+    arf_set_si(arb_midref(RE(location.data)), a);
+    mag_set_ui_2exp_si(arb_radref(RE(location.data)), 1, -FLINT_BITS);
+    arb_zero(IM(location.data));
 }
 
 void qbarelem::set(const fmpz_t a)
@@ -149,9 +192,9 @@ void qbarelem::set(const fmpz_t a)
     fmpz_one(minpoly.data->coeffs + 1);
     _fmpz_poly_set_length(minpoly.data, 2);
 
-    arf_set_fmpz(arb_midref(acb_realref(location.data)), a);
-    mag_set_ui_2exp_si(arb_radref(acb_realref(location.data)), 1, -FLINT_BITS);
-    arb_zero(acb_imagref(location.data));
+    arf_set_fmpz(arb_midref(RE(location.data)), a);
+    mag_set_ui_2exp_si(arb_radref(RE(location.data)), 1, -FLINT_BITS);
+    arb_zero(IM(location.data));
 }
 
 void qbarelem::set(const fmpq_t a)
@@ -161,51 +204,43 @@ void qbarelem::set(const fmpq_t a)
     fmpz_set(minpoly.data->coeffs + 1, fmpq_denref(a));
     _fmpz_poly_set_length(minpoly.data, 2);
 
-    arf_fmpz_div_fmpz(arb_midref(acb_realref(location.data)),
+    arf_fmpz_div_fmpz(arb_midref(RE(location.data)),
                         fmpq_numref(a), fmpq_denref(a), 2*FLINT_BITS, ARB_RND);
-    mag_set_ui_2exp_si(arb_radref(acb_realref(location.data)), 1, -2);
-    arb_zero(acb_imagref(location.data));
+    mag_set_ui_2exp_si(arb_radref(RE(location.data)), 1, -2);
+    arb_zero(IM(location.data));
 }
 
 /* given a function for refining our location, set us to the right root of p */
 template <typename RefineFunc>
 bool qbarelem::select_root(fmpz_poly_t p, RefineFunc T)
 {
-    xmag e, et;
+    slong prec;
+    xmag e;
+    xacb y;
     xfmpz_poly_factor f;
-    xacb rtloc;
 
     fmpz_poly_factor(f.data, p);
 
 try_again:
 
-    T(location.data);
+    T(location.data, f.data->num > 1);
 
-std::cout << "trying location: " << location.tostring() << std::endl;
-SleepMS(1000);
+    prec = unary_wp(location.data);
+
+//std::cout << "trying location: " << location.tostring() << std::endl;
 
     if (f.data->num > 1)
     {
-        mag_inf(e.data);
-
         for (slong i = 0; i < f.data->num; i++)
         {
-            if (newton_is_ok(location.data, f.data->p + i, et.data))
-                mag_min(e.data, e.data, et.data);
-        }
-
-        if (mag_is_inf(e.data))
-            goto try_again;
-
-        acb_set_radius(rtloc.data, location.data, e.data);
-
-        for (slong i = 0; i < f.data->num; i++)
-        {
-            if (could_be_root(rtloc.data, f.data->p + i))
-                continue;
-
-            fmpz_poly_swap(f.data->p + i, f.data->p + f.data->num - 1);
-            f.data->num--;
+            arb_fmpz_poly_evaluate_acb(y.data, f.data->p + i, location.data, prec);
+            if (!acb_contains_zero(y.data))
+            {
+                /* saunara */
+                fmpz_poly_swap(f.data->p + i, f.data->p + f.data->num - 1);
+                f.data->num--;
+                i--;
+            }
         }
 
         if (f.data->num > 1)
@@ -214,10 +249,11 @@ SleepMS(1000);
 
     assert(f.data->num == 1);
 
-    if (!newton_is_ok(location.data, f.data->p + 0, et.data))
+    if (!newton_test(y.data, location.data, f.data->p + 0))
         goto try_again;
 
     fmpz_poly_swap(minpoly.data, f.data->p + 0);
+
     return true;
 }
 
@@ -225,19 +261,19 @@ SleepMS(1000);
 /************* a + b ***************/
 
 class add_refiner {
-    xacb aloc, bloc;
+    xacb aloc, bloc, taloc, tbloc;
     const fmpz_poly_struct * aminpoly, * bminpoly;
     bool first;
 public:
     add_refiner(const qbarelem & a, const qbarelem & b)
     {
-        acb_set(aloc.data, a.location.data);
-        aminpoly = a.minpoly.data;
-        acb_set(bloc.data, b.location.data);
-        bminpoly = b.minpoly.data;
         first = true;
+        aminpoly = a.minpoly.data;
+        bminpoly = b.minpoly.data;
+        acb_set(aloc.data, a.location.data);
+        acb_set(bloc.data, b.location.data);
     }
-    void operator() (acb_t rloc)
+    void operator() (acb_t rloc, bool need_containment)
     {
         if (!first)
         {
@@ -245,17 +281,26 @@ public:
             newton_step(bloc.data, bminpoly);
         }
         first = false;
-        slong pa = acb_rel_accuracy_bits(aloc.data);
-        slong pb = acb_rel_accuracy_bits(bloc.data);
-        slong p = std::max(pa, pb);
-        p = std::min(p + 100, slong(ARF_PREC_EXACT));
-        p = std::max(p, slong(100));
-        acb_add(rloc, aloc.data, bloc.data, p);
+
+        slong p = binary_wp(aloc.data, bloc.data);
+
+        if (need_containment)
+        {
+            bool ok;
+            ok = newton_test(taloc.data, aloc.data, aminpoly); assert(ok);
+            ok = newton_test(tbloc.data, bloc.data, bminpoly); assert(ok);
+            acb_add(rloc, taloc.data, tbloc.data, p);
+        }
+        else
+        {
+            acb_add(rloc, aloc.data, bloc.data, p);
+        }
     }
 };
 
 bool qbarelem::add(const qbarelem & a, const qbarelem & b)
 {
+std::cout << "++++++++++++++++++++++++++++++++++++" << std::endl;
 std::cout << "add " << b.tostring() << " + " << a.tostring() << std::endl;
 
     if (fmpz_is_zero(a.minpoly.data->coeffs + 0))
@@ -303,40 +348,48 @@ std::cout << "add return: " << tostring() << std::endl;
 /************* a*b ***************/
 
 class mul_refiner {
-    xacb aloc, bloc;
+    xacb aloc, bloc, taloc, tbloc;
     const fmpz_poly_struct * aminpoly, * bminpoly;
     bool first;
 public:
     mul_refiner(const qbarelem & a, const qbarelem & b)
     {
-        acb_set(aloc.data, a.location.data);
-        aminpoly = a.minpoly.data;
-        acb_set(bloc.data, b.location.data);
-        bminpoly = b.minpoly.data;
         first = true;
+        aminpoly = a.minpoly.data;
+        bminpoly = b.minpoly.data;
+        acb_set(aloc.data, a.location.data);
+        acb_set(bloc.data, b.location.data);
     }
-
-    void operator() (acb_t rloc)
+    void operator() (acb_t rloc, bool need_containment)
     {
+        bool ok;
         if (!first)
         {
             newton_step(aloc.data, aminpoly);
             newton_step(bloc.data, bminpoly);
         }
         first = false;
-        slong pa = acb_rel_accuracy_bits(aloc.data);
-        slong pb = acb_rel_accuracy_bits(bloc.data);
-        slong p = std::max(pa, pb);
-        p = std::min(p + 100, slong(ARF_PREC_EXACT));
-        p = std::max(p, slong(100));
-        acb_mul(rloc, aloc.data, bloc.data, p);
+
+        slong p = binary_wp(aloc.data, bloc.data);
+
+        if (need_containment)
+        {
+            ok = newton_test(taloc.data, aloc.data, aminpoly); assert(ok);
+            ok = newton_test(tbloc.data, bloc.data, bminpoly); assert(ok);
+            acb_mul(rloc, taloc.data, tbloc.data, p);
+        }
+        else
+        {
+            acb_mul(rloc, aloc.data, bloc.data, p);
+        }
     }
 };
 
 
 bool qbarelem::mul(const qbarelem & a, const qbarelem & b)
 {
-std::cout << "mul " << a.tostring() << " * " << b.tostring() << std::endl;
+//std::cout << "++++++++++++++++++++++++++++++++++++" << std::endl;
+//std::cout << "mul " << a.tostring() << " * " << b.tostring() << std::endl;
 
     if (fmpz_is_zero(a.minpoly.data->coeffs + 0) ||
         fmpz_is_zero(b.minpoly.data->coeffs + 0))
@@ -373,56 +426,119 @@ std::cout << "mul " << a.tostring() << " * " << b.tostring() << std::endl;
     fmpz_poly_interpolate_fmpz_vec(t.data, xs.data->array, ys.data->array, rd + 1);
     select_root(t.data, mul_refiner(a, b));
 
-std::cout << "mul return: " << tostring() << std::endl;
+//std::cout << "mul return: " << tostring() << std::endl;
     return true;
 }
 
 
 /************ a^(b/c) **************/
-
 class pow_refiner {
-    xacb aloc;
+    xacb aloc, taloc;
     const fmpz_poly_struct * aminpoly;
     slong b;
     ulong c;
     bool first;
 public:
-    pow_refiner(const qbarelem & a, slong b_, slong c_)
+    pow_refiner(const qbarelem & a, slong b_, ulong c_)
     {
-        acb_set(aloc.data, a.location.data);
-        aminpoly = a.minpoly.data;
         b = b_;
         c = c_;
         first = true;
+        aminpoly = a.minpoly.data;
+        acb_set(aloc.data, a.location.data);
     }
-    void operator() (acb_t rloc)
+    void operator() (acb_t rloc, bool need_containment)
     {
+        bool ok;
+try_again:
         if (!first)
-        {
             newton_step(aloc.data, aminpoly);
-        }
         first = false;
 
-        if (arb_contains_zero(acb_imagref(aloc.data)))
-        {
-            /* we need to determine if aloc is real */
-            assert(0);
+        slong p = unary_wp(aloc.data);
 
-        }
-        else
+        if (c < 2)
         {
-            slong p = acb_rel_accuracy_bits(aloc.data);
-            p = std::min(p + 100, slong(ARF_PREC_EXACT));
-            p = std::max(p, slong(100));
+            /* no shenanigans because a -> a^b is continuous */
+            if (need_containment)
+            {
+                ok = newton_test(taloc.data, aloc.data, aminpoly); assert(ok);
+                acb_pow_si(rloc, taloc.data, b, p);
+            }
+            else
+            {
+                acb_pow_si(rloc, aloc.data, b, p);
+            }
+        }
+
+        /* nasty shit because the damn function has a discontinuity along a < 0 */
+
+        ok = newton_test(taloc.data, aloc.data, aminpoly); assert(ok);
+
+        if (acb_contains_zero(taloc.data))
+            goto try_again;
+
+        if (arb_is_zero(IM(taloc.data)))
+        {
+try_real:
+            assert(arb_is_zero(IM(taloc.data)));
+
+            if (arb_is_positive(RE(taloc.data)))
+            {
+                xfmpq pow(b, slong(c));
+                arb_pow_fmpq(RE(rloc), RE(taloc.data), pow.data, p);
+                arb_zero(IM(rloc));
+            }
+            else if (arb_is_negative(RE(taloc.data)))
+            {
+                xfmpq pow(b, slong(c));
+                xarb si, co;
+                arb_sin_cos_pi_fmpq(si.data, co.data, pow.data, p);
+                arb_abs(RE(taloc.data), RE(taloc.data));
+                arb_pow_fmpq(RE(taloc.data), RE(taloc.data), pow.data, p);
+                arb_mul(RE(rloc), co.data, RE(taloc.data), p);
+                arb_mul(IM(rloc), si.data, RE(taloc.data), p);
+            }
+            else
+            {
+                /* hmm, taloc was supposed to not contain zero */
+                goto try_again;
+            }
+        }
+        else if (!arb_contains_zero(IM(taloc.data)) ||
+                 arb_is_positive(RE(taloc.data)))
+        {
+            /* if this is not good enough this time, eventually it will be */
             acb_root_ui(rloc, aloc.data, c, p);
             acb_pow_si(rloc, rloc, b, p);
         }
+        else
+        {
+            /* intersect taloc with real axis and see if this real ball is ok */
+            arb_zero(IM(taloc.data));
+            if (!newton_test(rloc, taloc.data, aminpoly))
+            {
+                goto try_again;
+            }
+            else
+            {
+                acb_swap(rloc, taloc.data);
+                goto try_real;
+            }
+        }
+
+        /* if relative precision is too low, arb may have had trouble */
+        if (!acb_is_finite(rloc))
+            goto try_again;
+
+        return;
     }
 };
 
 bool qbarelem::pow(const qbarelem & a, slong b, ulong c)
 {
-std::cout << "pow: " << a.tostring() << "^(" << b << "/" << c << ")" << std::endl;
+//std::cout << "++++++++++++++++++++++++++++++++++++" << std::endl;
+//std::cout << "pow: " << a.tostring() << "^(" << b << "/" << c << ")" << std::endl;
 
     assert(c > 0);
     if (fmpz_is_zero(a.minpoly.data->coeffs + 0))
@@ -481,7 +597,7 @@ std::cout << "pow: " << a.tostring() << "^(" << b << "/" << c << ")" << std::end
 
     select_root(t.data, pow_refiner(a, b, c));
 
-std::cout << "pow return: " << tostring() << std::endl;
+//std::cout << "pow return: " << tostring() << std::endl;
     return true;
 }
 
@@ -492,19 +608,19 @@ ex qbarelem::get_ex() const
     wex slot(emake_node(gs.sym_sSlot.copy(), emake_cint(1)));
     uex number;
 
-    if (!arb_is_zero(acb_realref(location.data)))
+    if (!arb_is_zero(RE(location.data)))
     {
-        number.setz(emake_real_copy(acb_realref(location.data)));
+        number.setz(emake_real_copy(RE(location.data)));
     }
     else
     {
         number.setz(emake_cint(0));
     }
 
-    if (!arb_is_zero(acb_imagref(location.data)))
+    if (!arb_is_zero(IM(location.data)))
     {
         number.setz(emake_cmplx(number.release(),
-                               emake_real_copy(acb_imagref(location.data))));
+                               emake_real_copy(IM(location.data))));
     }
 
     for (slong i = 0; i < minpoly.data->length; i++)
