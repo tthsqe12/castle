@@ -6,11 +6,58 @@ void ex_parse_file(std::vector<uex> &ans, std::ifstream & is, bool toplevel, syn
     ans.clear();
     install_live_psymbols LPS;
     eparser P(toplevel);
-    char c;
+    unsigned int unistate = 0;
+    char rawc_;
+    char16_t c = 0;
 
-    while (is.get(c) && P.error == erNone)
+    while (is.get(rawc_) && P.error == erNone)
     {
-        // TODO probably should use unicode here
+        unsigned char rawc = rawc_;
+
+        switch (unistate)
+        {
+            case 0:
+            {
+                c = rawc;
+                if ((rawc & 0x80) == 0)
+                {
+                    break;
+                }
+                else if ((rawc & 0xE0) == 0xC0)
+                {
+                    unistate = 1;
+                    continue;
+                }
+                else
+                {
+                    assert((rawc & 0xE0) == 0xE0);
+                    unistate = 2;
+                    continue;
+                }
+            }
+            case 1:
+            {
+                assert((rawc & 0xC0) == 0x80);
+                c = ((c & 0x1F) << 6) + ((rawc & 0x3F) << 0);
+                break;
+            }
+            case 2:
+            {
+                assert((rawc & 0xC0) == 0x80);
+                c = ((c & 0x0F) << 6) + ((rawc & 0x3F) << 0);
+                unistate = 3;
+                continue;
+            }
+            default:
+            {
+                assert(unistate == 3);
+                assert((rawc & 0xC0) == 0x80);
+                c = ((c) << 6) + ((rawc & 0x3F) << 0);
+            }
+        }
+
+        unistate = 0;
+
         P.handle_rawchar(c);
         if (P.error)
         {
@@ -20,7 +67,7 @@ void ex_parse_file(std::vector<uex> &ans, std::ifstream & is, bool toplevel, syn
     }
     if (sr.error)
     {
-        sr.around.reset(gs.symsPi.copy());
+        sr.around.reset(gs.sym_sPi.copy());
         return;
     }
     P.handle_end();
@@ -37,20 +84,18 @@ void ex_parse_file(std::vector<uex> &ans, std::ifstream & is, bool toplevel, syn
     else
     {
         sr.error = erUnexpectedEnd;
-        sr.around.reset(gs.symsPi.copy());
+        sr.around.reset(gs.sym_sPi.copy());
         return;
     }
 }
 
 
-void ex_parse_string(std::vector<uex> &ans, const char * ss, size_t sn, bool toplevel, syntax_report & sr)
+void ex_parse_string(std::vector<uex> &ans, const char* s, size_t sn, bool toplevel, syntax_report & sr)
 {
-//std::cout << "ex_parse_exbox " << ex_tostring_full(b) << std::endl;
     ans.clear();
     install_live_psymbols LPS;
     eparser P(toplevel);
 
-    const unsigned char * s = reinterpret_cast<const unsigned char *>(ss);
     size_t si = 0;
     while (si < sn)
     {
@@ -59,13 +104,13 @@ void ex_parse_string(std::vector<uex> &ans, const char * ss, size_t sn, bool top
         P.handle_rawchar(c);
         if (P.error)
         {
-            sr.handle_cstr_error(P.error, ss, si);
+            sr.handle_cstr_error(P.error, s, si);
             break;
         }
     }
     if (sr.error)
     {
-        sr.around.reset(gs.symsPi.copy());
+        sr.around.reset(gs.sym_sPi.copy());
         return;
     }
     P.handle_end();
@@ -82,12 +127,10 @@ void ex_parse_string(std::vector<uex> &ans, const char * ss, size_t sn, bool top
     else
     {
         sr.error = erUnexpectedEnd;
-        sr.around.reset(gs.symsPi.copy());
+        sr.around.reset(gs.sym_sPi.copy());
         return;
     }
 }
-
-
 
 
 ex ex_parse_string(const char* s, int& error, size_t& pos)
@@ -101,7 +144,7 @@ ex ex_parse_string(const char* s, int& error, size_t& pos)
         if (P.error)
         {
             error = P.error;
-            return ecopy(gs.syms$Failed.get());
+            return ecopy(gs.sym_s$Failed.get());
         }
         pos++;
         s++;
@@ -109,10 +152,10 @@ ex ex_parse_string(const char* s, int& error, size_t& pos)
     P.handle_end();
     if (!P.have_one_ex())
     {
-        error = 1; return ecopy(gs.syms$Failed.get());
+        error = 1; return ecopy(gs.sym_s$Failed.get());
     }
 
-    assert(evalid_contentflags(P.estack[0].get()));
+    assert(evalid_bucketflags(P.estack[0].get()));
 
     return ecopy(P.estack[0].get());
 }
