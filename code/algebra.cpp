@@ -170,7 +170,7 @@ ex fmpq_mpoly_to_ex(const fmpq_mpoly_t a, const fmpq_mpoly_ctx_t ctx, const std:
 
     uex e(gs.sym_sPlus.get(), a->zpoly->length);
 
-    xfmpq c;
+    xfmpq_t c;
 
 	if (a->zpoly->bits <= FLINT_BITS)
 	{
@@ -190,10 +190,10 @@ ex fmpq_mpoly_to_ex(const fmpq_mpoly_t a, const fmpq_mpoly_ctx_t ctx, const std:
 	}
 	else
 	{
-		std::vector<xfmpz> exps;
+		std::vector<xfmpz_t> exps;
 		std::vector<fmpz *> expps;
 	    for (slong i = 0; i < n; i++)
-			exps.push_back(xfmpz());
+			exps.push_back(xfmpz_t());
 	    for (slong i = 0; i < n; i++)
 			expps.push_back(exps[i].data);
 
@@ -239,10 +239,10 @@ ex nmod_mpoly_to_ex(const nmod_mpoly_t a, const nmod_mpoly_ctx_t ctx, const std:
 	}
 	else
 	{
-		std::vector<xfmpz> exps;
+		std::vector<xfmpz_t> exps;
 		std::vector<fmpz *> expps;
 	    for (slong i = 0; i < n; i++)
-			exps.push_back(xfmpz());
+			exps.push_back(xfmpz_t());
 	    for (slong i = 0; i < n; i++)
 			expps.push_back(exps[i].data);
 
@@ -269,7 +269,7 @@ void poly_perm_vars(poly & a, poly & b, std::vector<size_t> p)
 {
     a.coeffs = b.coeffs;
     a.exps.clear();
-    std::vector<xfmpz> t(a.vars.size());
+    std::vector<xfmpz_t> t(a.vars.size());
     for (size_t i = 0; i < b.coeffs.size(); i++)
     {
         for (size_t j = 0; j < a.vars.size(); j++)
@@ -432,7 +432,7 @@ void poly_append(poly & b, poly & c)
 }
 
 
-ex enumber_reduce_mod(er e, const xfmpz & m)
+ex enumber_reduce_mod(er e, const xfmpz_t & m)
 {
     assert(fmpz_sgn(m.data) >= 0);
 
@@ -469,12 +469,12 @@ ex enumber_reduce_mod(er e, const xfmpz & m)
     }
 }
 
-void monomial_swap(xfmpz * A, xfmpz * B, size_t nvars);
+void monomial_swap(xfmpz_t * A, xfmpz_t * B, size_t nvars);
 
-int poly_reduce_mod(poly & A, const xfmpz & m)
+int poly_reduce_mod(poly & A, const xfmpz_t & m)
 {
     size_t nvars = A.vars.size();
-    xfmpz * Aexps = A.exps.data();
+    xfmpz_t * Aexps = A.exps.data();
     size_t Alen = 0;
     for (size_t i = 0; i < A.coeffs.size(); i++)
     {
@@ -500,7 +500,7 @@ int poly_reduce_mod(poly & A, const xfmpz & m)
 }
 
 /* return 0 for success, nonzero for failure */
-int poly_set_any_ex(poly & p, er e, const xfmpz & m)
+int poly_set_any_ex(poly & p, er e, const xfmpz_t & m)
 {
     int r;
 
@@ -527,7 +527,7 @@ int poly_set_any_ex(poly & p, er e, const xfmpz & m)
             p.coeffs.clear();
             p.vars.push_back(wex(ecopy(e)));
             p.coeffs.push_back(wex(emake_cint(1)));
-            p.exps.push_back(xfmpz(ulong(1)));
+            p.exps.push_back(xfmpz_t(ulong(1)));
         }
 //std::cout << " from " << ex_tostring(e) << " got " << p.tostring() << std::endl;
         return 0;
@@ -748,7 +748,7 @@ int poly_to_nmod_mpoly(nmod_mpoly_t a, const nmod_mpoly_ctx_t ctx, const poly & 
 
 /*****************************************************************************/
 
-static void split_base_power(wex & base, xfmpq & power)
+static void split_base_power(wex & base, xfmpq_t & power)
 {
     er b = base.get();
     if (!ehas_head_sym_length(b, gs.sym_sPower.get(), 2))
@@ -785,7 +785,7 @@ static ex split_base_intpower(er b, fmpz_t power)
         }
         else if (eis_rat(e))
         {
-            xfmpq q(1,1);
+            xfmpq_t q(1,1);
             fmpz_set(power, fmpq_numref(erat_data(e)));
             fmpz_set(fmpq_denref(q.data), fmpq_denref(erat_data(e)));
             return emake_node(gs.sym_sPower.copy(), ecopychild(b,1), emake_rat_move(q));
@@ -804,7 +804,7 @@ static ex split_base_intpower(er b, fmpz_t power)
             }
             else
             {
-                xfmpq q(1,1);
+                xfmpq_t q(1,1);
                 fmpz_set(power, fmpq_numref(erat_data(echild(e,1))));
                 fmpz_set(fmpq_denref(q.data), fmpq_denref(erat_data(echild(e,1))));
                 f.replacechild(1, emake_rat_move(q));
@@ -838,7 +838,7 @@ static ex split_base_posintpower(er b, fmpz_t power)
         }
         else if (eis_rat(e))
         {
-            xfmpq q(1,1);
+            xfmpq_t q(1,1);
             fmpz_set(power, fmpq_numref(erat_data(e)));
             fmpz_set(fmpq_denref(q.data), fmpq_denref(erat_data(e)));
             if (fmpz_sgn(power) < 0)
@@ -870,7 +870,7 @@ static ex split_base_posintpower(er b, fmpz_t power)
             }
             else
             {
-                xfmpq q(1,1);
+                xfmpq_t q(1,1);
                 fmpz_set(power, fmpq_numref(erat_data(echild(e,1))));
                 fmpz_set(fmpq_denref(q.data), fmpq_denref(erat_data(echild(e,1))));
                 if (fmpz_sgn(power) < 0)
@@ -898,19 +898,19 @@ static void set_map(
     for (size_t i = 0; i < org.size(); i++)
     {
         wex Obase(org[i].copy());
-        xfmpq Opow(1, 1);
+        xfmpq_t Opow(1, 1);
         split_base_power(Obase, Opow);
 
         bool found = false;
         for (size_t j = 0; j < target.size(); j++)
         {
             wex Tbase(target[j].copy());
-            xfmpq Tpow(1, 1);
+            xfmpq_t Tpow(1, 1);
             split_base_power(Tbase, Tpow);
 
             if (ex_same(Obase.get(), Tbase.get()))
             {
-                xfmpq q;
+                xfmpq_t q;
                 fmpq_div(q.data, Opow.data, Tpow.data);
                 if (fmpz_is_one(fmpq_denref(q.data)))
                 {
@@ -937,19 +937,19 @@ static void merge_vars(
     for (size_t i = 0; i < Cvars.size(); i++)
     {
         wex Cbase(Cvars[i].copy());
-        xfmpq Cpow(1, 1);
+        xfmpq_t Cpow(1, 1);
         split_base_power(Cbase, Cpow);
 
         bool found = false;
         for (size_t j = 0; j < Avars.size(); j++)
         {
             wex Abase(Avars[j].copy());
-            xfmpq Apow(1,1);
+            xfmpq_t Apow(1,1);
             split_base_power(Abase, Apow);
 
             if (ex_same(Abase.get(), Cbase.get()))
             {
-                xfmpq g;
+                xfmpq_t g;
                 fmpq_gcd(g.data, Cpow.data, Apow.data);
                 if (fmpq_is_one(g.data))
                     Avars[j].reset(Abase.copy());
@@ -1019,7 +1019,7 @@ public:
     constexpr static void (*mpoly_pow_fmpz)(fmpq_mpoly_t, const fmpq_mpoly_t, const fmpz_t, const fmpq_mpoly_ctx_t) = &fmpq_mpoly_pow_fmpz;
 
 	typedef fmpq_polyfactor polyfactor;
-	typedef xfmpq_mpoly xmpoly;
+	typedef xfmpq_mpoly_t xmpoly;
 	typedef fmpq_mpoly_ctx_t mpoly_ctx;
 
     fmpq_ratpoly(int)
@@ -1108,7 +1108,7 @@ public:
 
 	void map(fmpq_polyfactor & bm, fmpq_ratpoly & b)
 	{
-		std::vector<xfmpq_mpoly> Bmap;
+		std::vector<xfmpq_mpoly_t> Bmap;
 		set_map<fmpq_ratpoly>(Bmap, b.vars, vars, ctx);
 		fmpq_polyfactor_map(bm, ctx, b.data, b.ctx, Bmap);
 	}
@@ -1136,7 +1136,7 @@ public:
     constexpr static void (*mpoly_pow_fmpz)(nmod_mpoly_t, const nmod_mpoly_t, const fmpz_t, const nmod_mpoly_ctx_t) = &nmod_mpoly_pow_fmpz;
 
 	typedef nmod_polyfactor polyfactor;
-	typedef xnmod_mpoly xmpoly;
+	typedef xnmod_mpoly_t xmpoly;
 	typedef nmod_mpoly_ctx_t mpoly_ctx;
 
     nmod_ratpoly(mp_limb_t modulus)
@@ -1226,7 +1226,7 @@ public:
 
 	void map(nmod_polyfactor & bm, nmod_ratpoly & b)
 	{
-		std::vector<xnmod_mpoly> Bmap;
+		std::vector<xnmod_mpoly_t> Bmap;
 		set_map<nmod_ratpoly>(Bmap, b.vars, vars, ctx);
 		nmod_polyfactor_map(bm, ctx, b.data, b.ctx, Bmap);
 	}
@@ -1646,7 +1646,7 @@ ex dcode_sTogether(er e)
     if (eis_int(optModulus.get()))
     {
         ratpoly_error r;
-        xfmpz m(eint_number(optModulus.get()));
+        xfmpz_t m(eint_number(optModulus.get()));
         fmpz_abs(m.data, m.data);
         if (!fmpz_is_zero(m.data) && (!fmpz_is_probabprime(m.data) || !fmpz_is_prime(m.data)))
         {
@@ -1698,7 +1698,7 @@ ex dcode_sCancel(er e)
     if (eis_int(optModulus.get()))
     {
         ratpoly_error r;
-        xfmpz m(eint_number(optModulus.get()));
+        xfmpz_t m(eint_number(optModulus.get()));
         fmpz_abs(m.data, m.data);
         if (!fmpz_is_zero(m.data) && (!fmpz_is_probabprime(m.data) || !fmpz_is_prime(m.data)))
         {
@@ -1767,7 +1767,7 @@ ex dcode_sExpand(er e)
     if (eis_int(optModulus.get()))
     {
         ratpoly_error r;
-        xfmpz m(eint_number(optModulus.get()));
+        xfmpz_t m(eint_number(optModulus.get()));
         fmpz_abs(m.data, m.data);
         if (!fmpz_is_zero(m.data) && (!fmpz_is_probabprime(m.data) || !fmpz_is_prime(m.data)))
         {
@@ -1856,7 +1856,7 @@ ex dcode_sPolynomialGCD(er e)
     if (eis_int(optModulus.get()))
     {
         ratpoly_error r;
-        xfmpz m(eint_number(optModulus.get()));
+        xfmpz_t m(eint_number(optModulus.get()));
         fmpz_abs(m.data, m.data);
         if (!fmpz_is_zero(m.data) && (!fmpz_is_probabprime(m.data) || !fmpz_is_prime(m.data)))
         {
@@ -1918,7 +1918,7 @@ ex dcode_sFactor(er e)
     if (eis_int(optModulus.get()))
     {
         ratpoly_error r;
-        xfmpz m(eint_number(optModulus.get()));
+        xfmpz_t m(eint_number(optModulus.get()));
         fmpz_abs(m.data, m.data);
         if (!fmpz_is_zero(m.data) && (!fmpz_is_probabprime(m.data) || !fmpz_is_prime(m.data)))
         {

@@ -23,8 +23,8 @@ int  sread_fmpz(FILE * fp, fmpz_t x);
 void swrite_fmpq(FILE * fp, fmpq_t x);
 int  sread_fmpq(FILE * fp, fmpq_t x);
 
-void swrite_arb(FILE * fp, xarb & x);
-int  sread_arb(FILE * fp, xarb & x);
+void swrite_arb(FILE * fp, xarb_t & x);
+int  sread_arb(FILE * fp, xarb_t & x);
 
 void swrite_string(FILE * fp, const std::string &s);
 int  sread_string(FILE * fp, std::string &s);

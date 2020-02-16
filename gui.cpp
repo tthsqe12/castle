@@ -273,7 +273,7 @@ static gboolean blur_callback(GtkWidget* widget, GdkEvent* event, GtkIMContext* 
 static gboolean commit_callback(GtkWidget * widget, gchar* str, gpointer user_data)
 {
     char16_t c;
-    const unsigned char* s = (const unsigned char*) str;
+    const char* s = str;
     main_nb.io_mutex.lock();
     while (*s)
     {
@@ -392,23 +392,23 @@ gboolean on_key_press(GtkWidget * widget, GdkEventKey * event, GtkIMContext *im_
              : main_nb.key_insert_char('-');
         break;
     case GDK_KEY_Left:
-           ctrl ? main_nb.key_ctrlleft()
-                : alt ? main_nb.key_altleft()
+           ctrl ? void(NULL)/*main_nb.key_ctrlleft()*/
+                : alt ? void(NULL)/*main_nb.key_altleft()*/
                       : main_nb.key_move(shift ? movearg_ShiftLeft : movearg_Left);
         break;
     case GDK_KEY_Right:
-           ctrl ? main_nb.key_ctrlright()
-                : alt ? main_nb.key_altright()
+           ctrl ? void(NULL)/*main_nb.key_ctrlright()*/
+                : alt ? void(NULL)/*main_nb.key_altright()*/
                       : main_nb.key_move(shift ? movearg_ShiftRight : movearg_Right);
         break;
     case GDK_KEY_Up:
-           ctrl ? main_nb.key_ctrlup()
-                : alt ? main_nb.key_altup()
+           ctrl ? void(NULL)/*main_nb.key_ctrlup()*/
+                : alt ? void(NULL)/*main_nb.key_altup()*/
                       : main_nb.key_move(shift ? movearg_ShiftUp : movearg_Up);
         break;
     case GDK_KEY_Down:
-           ctrl ? main_nb.key_ctrldown()
-                : alt ? main_nb.key_altdown()
+           ctrl ? void(NULL)/*main_nb.key_ctrldown()*/
+                : alt ? void(NULL)/*main_nb.key_altdown()*/
                       : main_nb.key_move(shift ? movearg_ShiftDown : movearg_Down);
         break;
     case GDK_KEY_Page_Up:
@@ -599,17 +599,40 @@ gboolean on_key_press(GtkWidget * widget, GdkEventKey * event, GtkIMContext *im_
         ctrl ? _handle_open(main_nb) : main_nb.key_insert_char(shift ? 'O' : 'o');
         break;
 
+    case GDK_KEY_C:
+        ctrl ? main_nb.key_copy() : main_nb.key_insert_char('C');
+        break;
+    case GDK_KEY_c:
+        ctrl ? main_nb.key_copy() : main_nb.key_insert_char('c');
+        break;
+    case GDK_KEY_V:
+        ctrl ? main_nb.key_paste() : main_nb.key_insert_char('V');
+        break;
+    case GDK_KEY_v:
+        ctrl ? main_nb.key_paste() : main_nb.key_insert_char('v');
+        break;
+    case GDK_KEY_T:
+        ctrl ? main_nb.key_insert(insertarg_Text) : main_nb.key_insert_char('T');
+        break;
+    case GDK_KEY_t:
+        ctrl ? main_nb.key_insert(insertarg_Text) : main_nb.key_insert_char('t');
+        break;
+    case GDK_KEY_E:
+        ctrl ? main_nb.key_toggle_cell_expr() : main_nb.key_insert_char('E');
+        break;
+    case GDK_KEY_e:
+        ctrl ? main_nb.key_toggle_cell_expr() : main_nb.key_insert_char('e');
+        break;
+
     default:
         if (GDK_KEY_a <= event->keyval && event->keyval <= GDK_KEY_z)
         {
-            ctrl ? main_nb.key_ctrl_char(event->keyval - GDK_KEY_a + 'a')
-                 : main_nb.key_insert_char(event->keyval - GDK_KEY_a + 'a');
+            main_nb.key_insert_char(event->keyval - GDK_KEY_a + 'a');
             break;
         }
         else if (GDK_KEY_A <= event->keyval && event->keyval <= GDK_KEY_Z)
         {
-            ctrl ? main_nb.key_ctrl_char(event->keyval - GDK_KEY_A + 'A')
-                 : main_nb.key_insert_char(event->keyval - GDK_KEY_A + 'A');
+            main_nb.key_insert_char(event->keyval - GDK_KEY_A + 'A');
             break;
         }
     }
@@ -662,7 +685,7 @@ std::cout << "<gui reader>: could not read" << std::endl;
         {
             uex e;
             int err = sread_ex(fp_out, e);
-std::cout << "<gui reader>: CMD_EXPR err: " << err << "  e: " << ex_tostring_full(e.get()) << std::endl;
+//std::cout << "<gui reader>: CMD_EXPR err: " << err << "  e: " << ex_tostring_full(e.get()) << std::endl;
             if (err != 0)
             {
                 std::cerr << "ERROR gui: could not read CMD_EXPR - error " << err << std::endl;
@@ -681,75 +704,36 @@ std::cout << "<gui reader>: CMD_EXPR err: " << err << "  e: " << ex_tostring_ful
             }
             else if (ehas_head_sym_length(e.get(), gs.sym_sReturnTextPacket.get(), 1))
             {
-                boxbase * row = boxbase_convert_from_ex(e.child(1));
-                if (row == nullptr || row->get_type() != BNTYPE_ROW)
-                {
-                    std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
-                    if (row != nullptr)
-                        delete row;
-                }
-                else
-                {
-                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_OUTPUT);
-                    if (main_nb.out_name.get() != nullptr)
-                    {
-                        boxbase * label = boxbase_convert_from_ex(main_nb.out_name.get());
-                        if (label == nullptr || label->get_type() != BNTYPE_ROW)
-                        {
-                            std::cerr << "ERROR gui: could not convert " << ex_tostring_full(main_nb.out_name.get()) << std::endl;
-                            if (label != nullptr)
-                                delete label;
-                        }
-                        else
-                        {
-                            cell->label.cbox = dynamic_cast<rowbox*>(label);
-                        }
-                    }
-                    main_nb.io_mutex.lock();
-                    main_nb.print_cell(cell);
-                    main_nb.io_mutex.unlock();
-                    g_idle_add(myfunc, NULL);
-                }
+                rowbox* row = rowbox_from_ex(e.child(1));
+                cellbox* cell = new cellbox(row, cellt_OUTPUT);
+                if (main_nb.out_name.get() != nullptr)
+                    cell->label.cbox = rowbox_from_ex(main_nb.out_name.get());
+                main_nb.io_mutex.lock();
+                main_nb.print_cell(cell);
+                main_nb.io_mutex.unlock();
+                g_idle_add(myfunc, NULL);
             }
             else if (ehas_head_sym_length(e.get(), gs.sym_sMessagePacket.get(), 2))
             {
                 e.replacechild(0, gs.sym_sList.copy());
-                e.reset(emake_node(gs.sym_sRowBox.copy(), e.release()));
-                boxbase * row = boxbase_convert_from_ex(e.get());
-                if (row == nullptr || row->get_type() != BNTYPE_ROW)
-                {
-                    std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
-                    if (row != nullptr)
-                        delete row;
-                }
-                else
-                {
-                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_MESSAGE);
-                    main_nb.io_mutex.lock();
-                    main_nb.print_cell(cell);
-                    main_nb.io_mutex.unlock();
-                    g_idle_add(myfunc, NULL);
-                }
+                e.set(emake_node(gs.sym_sRowBox.copy(), e.release()));
+                rowbox* row = rowbox_from_ex(e.get());
+                cellbox* cell = new cellbox(row, cellt_MESSAGE);
+                main_nb.io_mutex.lock();
+                main_nb.print_cell(cell);
+                main_nb.io_mutex.unlock();
+                g_idle_add(myfunc, NULL);
             }
             else if (ehas_head_sym_length(e.get(), gs.sym_sTextPacket.get(), 1))
             {
                 e.replacechild(0, gs.sym_sList.copy());
-                e.reset(emake_node(gs.sym_sRowBox.copy(), e.release()));
-                boxbase * row = boxbase_convert_from_ex(e.get());
-                if (row == nullptr || row->get_type() != BNTYPE_ROW)
-                {
-                    std::cerr << "ERROR gui: could not convert " << ex_tostring_full(e.get()) << std::endl;
-                    if (row != nullptr)
-                        delete row;
-                }
-                else
-                {
-                    cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_PRINT);
-                    main_nb.io_mutex.lock();
-                    main_nb.print_cell(cell);
-                    main_nb.io_mutex.unlock();
-                    g_idle_add(myfunc, NULL);
-                }
+                e.set(emake_node(gs.sym_sRowBox.copy(), e.release()));
+                rowbox* row = rowbox_from_ex(e.get());
+                cellbox* cell = new cellbox(dynamic_cast<rowbox*>(row), cellt_PRINT);
+                main_nb.io_mutex.lock();
+                main_nb.print_cell(cell);
+                main_nb.io_mutex.unlock();
+                g_idle_add(myfunc, NULL);
             }
         }
         else if (t == CMD_SYNTAX)
@@ -876,11 +860,11 @@ gboolean signal_expose(GtkWidget *widget, GdkEventExpose *event, GtkIMContext *i
 
 static void signal_commit(GtkIMContext *im_context, gchar* str, gpointer user_data)
 {
-    char16_t c;
-    const unsigned char* s = (const unsigned char*) str;
+    const char* s = str;
     main_nb.io_mutex.lock();
     while (*s)
     {
+        char16_t c;
         s += readonechar16(c, s);
         main_nb.key_insert_char(c);
     }
@@ -1035,7 +1019,7 @@ gtk_menu_shell_append(GTK_MENU_SHELL(menubar), palettes);
 
 
     drawing_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(GTK_WIDGET(drawing_area), 600, 500);
+    gtk_widget_set_size_request(GTK_WIDGET(drawing_area), 600, 800);
 	gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), drawing_area, TRUE, TRUE, 0);
     gtk_widget_show(menubar);

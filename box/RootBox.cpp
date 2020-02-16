@@ -391,7 +391,6 @@ boxbase* rootbox::_cell_remove_selection(std::vector<int32_t>&s, std::vector<int
     {
         _down1(s[i]);
 //printf("_cell_remove_selection 2\n");
-
         return _cell_remove_selection(s, t, i+1);
     }
     else
@@ -429,7 +428,7 @@ boxbase* rootbox::_cell_remove_selection(std::vector<int32_t>&s, std::vector<int
             }
         }
 
-//printf("0 notebook:\n"); print();
+//printf("0 notebook:\n"); print(0,0,0);
 
 
 //printf("\n\n\nremove s:\n"); boxnode_print(NULL, r, 0); printf("\n");
@@ -442,7 +441,7 @@ boxbase* rootbox::_cell_remove_selection(std::vector<int32_t>&s, std::vector<int
 //printf("_cell_remove_selection 6\n");
 
             childsplice(r, childlen(r), childremoverange(_us(), s[i], t[i]));
-//printf("remove middle:\n"); boxnode_print(NULL, r, 0); printf("\n");
+//printf("remove middle:\n"); r->print(0,0,0); printf("\n");
             t[i] = s[i];
         }
 
@@ -450,9 +449,7 @@ boxbase* rootbox::_cell_remove_selection(std::vector<int32_t>&s, std::vector<int
 
         assert(t[i] == s[i]);
 
-//printf("1 notebook:\n"); print();
-
-        assert(t[i] < childlen(_us()));
+//printf("1 notebook:\n"); print(0,0,0);
 
 //printf("_cell_remove_selection 7\n");
         if (_us()->get_type() == BNTYPE_CELLGROUP && childlen(_us()) == 1)
@@ -480,13 +477,13 @@ boxbase* rootbox::_cell_remove_selection(std::vector<int32_t>&s, std::vector<int
 //printf("going to child %d %p\n",t[i],bnode_child(_us(), t[i]));
             _down1(t[i]);
             _cell_remove_selt(r, v, t, i+1);
-//printf("remove r:\n"); boxnode_print(NULL, r, 0); printf("\n");
-//printf("v:\n"); boxnode_print(NULL, v, 0); printf("\n");
-//printf("notebook:\n"); print();
+//printf("remove r:\n"); r->print(0,0,0); printf("\n");
+//printf("v:\n"); v->print(0,0,0); printf("\n");
+//printf("notebook:\n"); print(0,0,0);
 
             cell_delete();
         }
-//printf("2 notebook:\n"); print();
+//printf("2 notebook:\n"); print(0,0,0);
 //printf("_cell_remove_selection 11\n");
         while (_us()->get_type() == BNTYPE_CELLGROUP)
         {
@@ -524,8 +521,6 @@ bool stdvector_equal(std::vector<int32_t>&a, std::vector<int32_t>&b)
 
 void rootbox::makecell(cellType t)
 {
-std::cout << "makecell called " << t << std::endl;
-
     if (cursor_b.empty())
     {
         // make new cell
@@ -561,76 +556,6 @@ std::cout << "makecell called " << t << std::endl;
     }
 }
 
-/*
-
-void notebook::key_makecell(int c)
-{
-    cursor_needs_fitting = true;
-    
-    if (we_at_cellbreak())
-    {
-        box newcell = boxnode_make(BNTYPE_CELL, boxnode_make_from_cstr(
-                                    c == CELLTYPE_TITLE         ? "Title" :
-                                    c == CELLTYPE_SECTION       ? "Section" :
-                                    c == CELLTYPE_SUBSECTION    ? "Subsection" :
-                                    c == CELLTYPE_SUBSUBSECTION ? "Subsubsection" :
-                                    c == CELLTYPE_BOLDTEXT      ? "BoldText" :
-                                    c == CELLTYPE_TEXT      ? "Text" :
-                                    c == CELLTYPE_MESSAGE   ? "Message" :
-                                    c == CELLTYPE_PRINT     ? "Print" :
-                                    c == CELLTYPE_OUTPUT    ? "Output" :
-                                                              "Input"       ));
-        bto_node(newcell)->extra0 = c;
-        cell_insert(newcell);
-        _down2(0, 0);
-        selection.type = SELTYPE_ROW;
-        selection.data.resize(1);
-        selection.data[0] = bnode_len(_parent()) - 1;
-    }
-    else
-    {
-//printf("calling set_cursor_cell_style\n");
-        set_cursor_cell_style(c);
-//printf("returned from set_cursor_cell_style\n");
-    }
-}
-
-void notebook::set_cursor_cell_style(int type)
-{
-    printf("type: %d\n",type);
-    assert(0 <= type && type <= 8);
-
-    for (size_t i = 1; i < _depth(); i++)
-    {
-        if (bnode_type(cursor1[i].node) == BNTYPE_CELL)
-        {
-            if (bto_node(cursor1[i].node)->extra0 != type)
-            {
-                std::stack<int> s;
-                while (_depth() > i)
-                {
-                    s.push(_pi());
-                    _up1();
-                }
-//printf("before remove:\n");print();
-                box c = cell_remove();
-                bto_node(c)->extra0 = type;
-                box_invalidate_all(c);
-//printf("after remove:\n");print();
-                cell_insert(c);
-                _invalidate_downto(0);
-//printf("after insert\n");print();
-                while (!s.empty())
-                {
-                    _down1(s.top());
-                    s.pop();
-                }
-            }
-            return;
-        }
-    }
-}
-*/
 
 
 void rootbox::cell_delete()
@@ -1257,26 +1182,125 @@ boxbase * rootbox::copy()
     return nullptr;
 }
 
+
+
+static void _key_copy_helper_left(rootbox* r, boxbase* U, const std::vector<int32_t>* A, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        cellbox* u = dynamic_cast<cellbox*>(U);
+        r->child.push_back(cellarrayelem(u->copy()));
+        return;
+    }
+
+    assert(j < A->size());
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*A)[j];
+    if (i == 0)
+    {
+        for (size_t k = j + 1; k < A->size(); k++)
+        {
+            if ((*A)[k] != 0)
+                goto doit;
+        }
+        r->child.push_back(cellarrayelem(u->copy()));
+        return;
+    }
+
+doit:
+    _key_copy_helper_left(r, u->child[i].cbox, A, j + 1);    
+    for (i++; i < u->child.size(); i++)
+        r->child.push_back(u->child[i].cbox->copy());
+}
+
+
+static void _key_copy_helper_right(rootbox* r, boxbase* U, const std::vector<int32_t> * B, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        return;
+    }
+
+    assert(j < B->size());
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*B)[j];
+    _key_copy_helper_right(r, u->child[i].cbox, B, j + 1);
+    for (i--; i >= 0; i--)
+        r->child.push_back(u->child[i].cbox->copy());
+}
+
+static void _key_copy_helper(rootbox* r, boxbase* U, const std::vector<int32_t> * A, const std::vector<int32_t> * B, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        return;
+    }
+
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*A)[j];
+    if (i == (*B)[j])
+    {
+        _key_copy_helper(r, u->child[i].cbox, A, B, j + 1);
+    }
+    else
+    {
+        _key_copy_helper_left(r, u->child[i].cbox, A, j + 1);
+        for (++i; i < (*B)[j]; ++i)
+            r->child.push_back(cellarrayelem(u->child[i].cbox->copy()));
+        _key_copy_helper_right(r, u->child[i].cbox, B, j + 1);
+    }
+}
+
 void rootbox::key_copy(boxbase*&b)
 {
     if (cursor_b.empty())
     {
+        cursor_t = cursor_a;
         _us()->key_copy(b);
     }
     else
     {
-        assert(cursor_a.size() == 1);
-        assert(cursor_b.size() == 1);
-        int32_t x = std::min(cursor_a[0], cursor_b[0]);
-        int32_t y = std::max(cursor_a[0], cursor_b[0]);
-        if (x < y)
+        std::vector<int32_t> * A = &cursor_a, * B = &cursor_b;
+
+        for (size_t i = 0; i < cursor_a.size(); i++)
         {
-            rootbox * r = new rootbox(y - x, 0, 0);
-            for (int32_t i = x; i < y; i++)
-                r->child[i - x].cbox = child[i].cbox->copy();
-            assert(b == nullptr);
-            b = r;
-        }        
+            if (i >= cursor_b.size()) // should not happen
+                break;
+
+            if (cursor_a[i] < cursor_b[i])
+            {
+                break;
+            }
+            else if (cursor_a[i] > cursor_b[i])
+            {
+                std::swap(A, B);
+                break;
+            }
+        }
+
+        rootbox* r = new rootbox();
+        assert(b == nullptr);
+        b = r;
+        int32_t i = (*A)[0];
+        if (i == (*B)[0])
+        {
+            if (i < child.size())
+                _key_copy_helper(r, child[i].cbox, A, B, 1);
+        }
+        else
+        {
+            _key_copy_helper_left(r, child[i].cbox, A, 1);
+            for (++i; i < (*B)[0]; ++i)
+                r->child.push_back(cellarrayelem(child[i].cbox->copy()));
+            if ((*B)[0] < child.size())
+                _key_copy_helper_right(r, child[i].cbox, B, 1);
+        }
     }
 }
 
@@ -1290,13 +1314,24 @@ void rootbox::key_paste(boxbase*&b)
     {
         delete_selection();
         rootbox* r = dynamic_cast<rootbox*>(b);
-        size_t n = r->child.size();
-        assert(cursor_a.size() == 1);
-        for (int32_t j = 0; j < n; j++)
+        cursor_t = cursor_a;
+        if (cursor_a[0] < child.size())
         {
-            child.insert(child.begin() + cursor_a[0], 
-                         cellarrayelem(r->child[j].cbox->copy()));
-            cursor_a[0]++;
+            dynamic_cast<cellbox*>(_us())->flags |= BNFLAG_CURSORAMARK;
+            for (size_t i = r->child.size(); i > 0; i--)
+                cell_insert(r->child[i - 1].cbox->copy());
+            cursor_t.clear();
+            bool found = _find_mark(this, cursor_t, BNFLAG_CURSORAMARK);
+            assert(found);
+            dynamic_cast<cellbox*>(_us())->flags &= ~BNFLAG_CURSORAMARK;
+            cursor_a = cursor_t;        
+        }
+        else
+        {
+            for (size_t i = r->child.size(); i > 0; i--)
+                cell_insert(r->child[i - 1].cbox->copy());
+            cursor_a.clear();
+            cursor_a.push_back(child.size());
         }
         cursor_b = cursor_a;
     }
@@ -1305,26 +1340,30 @@ void rootbox::key_paste(boxbase*&b)
         delete_selection();
         rowbox* r = dynamic_cast<rowbox*>(b->copy());
         if (r->child.empty() || ibox_type(r->child.back().cibox) != BNTYPE_NULLER)
-        {
             r->child.push_back(iboxarrayelem(new nullbox()));
-        }
         r->cursor_b = r->cursor_a = r->child.size() - 1;
-        assert(cursor_a.size() == 1);
-        child.insert(child.begin() + cursor_a[0], 
-                     cellarrayelem(new cellbox(r, cellt_INPUT)));
-        cursor_b.clear();
+        cursor_t = cursor_a;
+        if (cursor_a[0] < child.size())
+        {
+            dynamic_cast<cellbox*>(_us())->flags |= BNFLAG_CURSORAMARK;
+            cell_insert(new cellbox(r, cellt_INPUT));
+            cursor_t.clear();
+            bool found = _find_mark(this, cursor_t, BNFLAG_CURSORAMARK);
+            assert(found);
+            dynamic_cast<cellbox*>(_us())->flags &= ~BNFLAG_CURSORAMARK;
+            cursor_a = cursor_t;        
+        }
+        else
+        {
+            cell_insert(new cellbox(r, cellt_INPUT));
+            cursor_a.clear();
+            cursor_a.push_back(child.size());
+        }
+        cursor_b = cursor_a;
     }
     else if (b != nullptr && b->get_type() == BNTYPE_GRID)
     {
         delete_selection();
-        gridbox* g = dynamic_cast<gridbox*>(b->copy());
-        rowbox* r = new rowbox(2, 1, 1);
-        r->child[0].cibox.ptr = g;
-        r->child[1].cibox.ptr = new nullbox();
-        assert(cursor_a.size() == 1);
-        child.insert(child.begin() + cursor_a[0],
-                     cellarrayelem(new cellbox(r, cellt_INPUT)));
-        cursor_b.clear();
     }
 }
 
@@ -1404,7 +1443,9 @@ moveRet rootbox::move(boxbase*&b, moveArg m)
             }
             else
             {
+                cursor_t = cursor_a;
                 goto_prev_cellbreak();
+                cursor_a = cursor_t;
                 return moveret_OK;
             }
         }
@@ -1475,9 +1516,9 @@ moveRet rootbox::move(boxbase*&b, moveArg m)
             }
             else
             {
-                assert(cursor_a.size() == 1);
-                assert(cursor_b.size() == 1);
-                cursor_a[0] += cursor_a[0] < child.size();
+                cursor_t = cursor_a;
+                goto_next_cellbreak();
+                cursor_a = cursor_t;
                 return moveret_OK;
             }            
         }
@@ -1726,6 +1767,7 @@ void rootbox::draw_pre(boxdrawarg da)
     drawtline(0, y, glb_image.sizex, y, da.nb->zoomint*0.1, da.nb->cCursor, da.T);
 }
 
+
 void rootbox::draw_main(boxdrawarg da)
 {
     if (cursor_b.empty())
@@ -1737,12 +1779,87 @@ void rootbox::draw_main(boxdrawarg da)
     }
     else
     {
-        for (auto& i : child)
+        for (auto&i : child)
         {
             i.cbox->draw_main(boxdrawarg(da, i.offx, i.offy, DFLAG_IGNORESEL));
         }
     }
 }
+
+static void _draw_post_helper_left(boxbase* U, boxdrawarg da, const std::vector<int32_t> * A, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        cellbox* u = dynamic_cast<cellbox*>(U);
+        _draw_cellgroup_bracket(u, da, true);
+        return;
+    }
+
+    assert(j < A->size());
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*A)[j];
+
+    if (i == 0)
+    {
+        for (size_t k = j + 1; k < A->size(); k++)
+        {
+            if ((*A)[k] != 0)
+                goto doit;
+        }
+        _draw_cellgroup_bracket(u, da, true);
+        return;
+    }
+
+doit:
+    _draw_post_helper_left(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), A, j + 1);    
+    for (i++; i < u->child.size(); i++)
+        _draw_cellgroup_bracket(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), true);
+}
+
+
+static void _draw_post_helper_right(boxbase* U, boxdrawarg da, const std::vector<int32_t> * B, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        return;
+    }
+
+    assert(j < B->size());
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*B)[j];
+    _draw_post_helper_right(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), B, j + 1);
+    for (i--; i >= 0; i--)
+        _draw_cellgroup_bracket(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), true);
+}
+
+static void _draw_post_helper(boxbase* U, boxdrawarg da, const std::vector<int32_t> * A, const std::vector<int32_t> * B, size_t j)
+{
+    if (U->get_type() == BNTYPE_CELL)
+    {
+        return;
+    }
+
+    assert(U->get_type() == BNTYPE_CELLGROUP);
+    cellgroupbox* u = dynamic_cast<cellgroupbox*>(U);
+
+    int32_t i = (*A)[j];
+    if (i == (*B)[j])
+    {
+        _draw_post_helper(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), A, B, j + 1);
+    }
+    else
+    {
+        _draw_post_helper_left(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), A, j + 1);
+        for (++i; i < (*B)[j]; ++i)
+            _draw_cellgroup_bracket(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), true);
+        _draw_post_helper_right(u->child[i].cbox, boxdrawarg(da, u->child[i].offx, u->child[i].offy), B, j + 1);
+    }
+}
+
 
 void rootbox::draw_post(boxdrawarg da)
 {
@@ -1759,6 +1876,41 @@ void rootbox::draw_post(boxdrawarg da)
         }
         U->draw_post(boxdrawarg(da, x, y));
         return;
+    }
+    else
+    {
+        std::vector<int32_t> * A = &cursor_a, * B = &cursor_b;
+
+        for (size_t i = 0; i < cursor_a.size(); i++)
+        {
+            if (i >= cursor_b.size()) // should not happen
+                break;
+
+            if (cursor_a[i] < cursor_b[i])
+            {
+                break;
+            }
+            else if (cursor_a[i] > cursor_b[i])
+            {
+                std::swap(A, B);
+                break;
+            }
+        }
+
+        int32_t i = (*A)[0];
+        if (i == (*B)[0])
+        {
+            if (i < child.size())
+                _draw_post_helper(child[i].cbox, boxdrawarg(da, child[i].offx, child[i].offy), A, B, 1);
+        }
+        else
+        {
+            _draw_post_helper_left(child[i].cbox, boxdrawarg(da, child[i].offx, child[i].offy), A, 1);
+            for (++i; i < (*B)[0]; ++i)
+                _draw_cellgroup_bracket(child[i].cbox, boxdrawarg(da, child[i].offx, child[i].offy), true);
+            if ((*B)[0] < child.size())
+                _draw_post_helper_right(child[i].cbox, boxdrawarg(da, child[i].offx, child[i].offy), B, 1);
+        }
     }
 }
 

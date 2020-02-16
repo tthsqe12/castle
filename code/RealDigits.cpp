@@ -34,10 +34,10 @@ ex dcode_sRealDigits(er e)
         }
         else if (eis_rat(x))
         {
-            xfmpz a(fmpq_numref(erat_data(x)));
-            xfmpz b(fmpq_denref(erat_data(x)));
-            xfmpz u, v, t, s, exp;
-            xfmpz radix(UWORD(10));
+            xfmpz_t a(fmpq_numref(erat_data(x)));
+            xfmpz_t b(fmpq_denref(erat_data(x)));
+            xfmpz_t u, v, t, s, exp;
+            xfmpz_t radix(UWORD(10));
 
             fmpz_abs(a.data, a.data);
             fmpz_set_si(exp.data, fmpz_remove(a.data, a.data, radix.data)
@@ -68,7 +68,7 @@ ex dcode_sRealDigits(er e)
 
             if (!fmpz_is_zero(a.data))
             {
-				x_fmpz_vector reppart;
+				x_fmpz_vector_t reppart;
                 if (fmpz_cmp_ui(radix.data, COEFF_MAX + 1) <= 0 && fmpz_abs_fits_ui(b.data))
                 {
 					assert(fmpz_abs_fits_ui(a.data));

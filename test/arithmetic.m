@@ -1,6 +1,6 @@
 Print["arithmetic"];
 
-Print["... integer arithmetic"];
+Print["... integer"];
 
 Assert[1 + 2 == 3];
 
@@ -12,7 +12,7 @@ Do[
     Assert[Sum[n^3, {n, 1, m}] === m^2*(m + 1)^2/4];
 , {m, 1, 50}];
 
-Print["... rational arithmetic"];
+Print["... rational"];
 
 Do[
     t = Sum[1/n, {n, 1, m}] + Sum[1/n, {n, m + 1, m + m}];

@@ -210,7 +210,7 @@ public:
     std::string num_exp2;
     std::string sym_context;
     std::string sym_name;
-    xfmpz number;
+    xfmpz_t number;
     slong digits_after_dot, digits_after_dot2;
     uex pattern_name, blank_type;
     uex prevTk, currTk, nextTk;
@@ -265,15 +265,25 @@ Precedence postfix_prec(Operator op);
 Association op_asso(Operator op);
 er op_to_sym(Operator op);
 
-int32_t esccode_to_char(const char * s);
-char16_t escapedname_to_char(const char * s);
+//int32_t esccode_to_char(const char * s);
+//char16_t escapedname_to_char(const char * s);
 //const char * char_to_escapedname(char16_t c);
 
-size_t readonechar16(char16_t&c, const unsigned char * a);
+//size_t readonechar16(char16_t&c, const char * a);
+//void stdstring_pushback_char16(std::string&s, char16_t c);
+//void stdstring_append_char16v(std::string&s, std::vector<char16_t>&v);
+//void stdstring_pushback_cvtascii(std::string&s, char16_t c, bool esc);
+//void stdstring_append_cvtascii(std::string&s, std::string&a, bool esc);
+
+
+int32_t esccode_to_char(const char * s);
+char16_t escapedname_to_char(const char * s);
+size_t readonechar16(char16_t&c, const char * A);
 void stdstring_pushback_char16(std::string&s, char16_t c);
 void stdstring_append_char16v(std::string&s, std::vector<char16_t>&v);
-void stdstring_pushback_cvtascii(std::string&s, char16_t c, bool esc);
-void stdstring_append_cvtascii(std::string&s, std::string&a, bool esc);
+void stdstring_pushback_asciiesc(std::string&s, char16_t c, bool ascii, bool esc);
+void stdstring_append_asciiesc(std::string&s, std::string&a, bool ascii, bool esc);
+
 
 
 class globalcharinfo {

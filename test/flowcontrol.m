@@ -1,5 +1,16 @@
 Print["flowcontrol"];
 
+Print["... return"]
+
+ClearAll[f]; f[x_] := Return[x, f]; Assert[f[5] === 5]
+
+ClearAll[f]; f[x_] := {Return[x, f]}; Assert[f[5] === 5]
+
+ClearAll[f]; f[x_] := Block[{t = x}, Return[t, Block]]; Assert[f[5] === 5]
+
+ClearAll[f]; f[x_] := Module[{t = x}, Return[t, Module]]; Assert[f[5] === 5]
+
+
 Print["... goto"];
 
 t = Reap[

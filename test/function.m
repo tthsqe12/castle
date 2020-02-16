@@ -2,7 +2,6 @@ Print["function"];
 
 Print["... pure functions"];
 
-Print["functional: ", Timing[Function[If[# < 2, #, #0[#1 - 1] + #0[#1 - 2]]][15]]];
 Assert[Fibonacci[10] === Function[If[# < 2, #, #0[#1 - 1] + #0[#1 - 2]]][10]];
 
 Print["... downvalues"];

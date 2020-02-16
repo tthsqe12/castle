@@ -104,8 +104,8 @@ ex _subsets(ex E, slong start, slong stop, slong step)
     start = std::min(start, slong(k));
     stop = std::min(stop, slong(k));
 
-    xfmpz total_size(UWORD(0));
-    xfmpz bin;
+    xfmpz_t total_size(UWORD(0));
+    xfmpz_t bin;
     for (slong i = start; start <= i && i <= stop; i += step)
     {
         fmpz_bin_uiui(bin.data, k, i);

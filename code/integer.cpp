@@ -292,8 +292,8 @@ struct wex_ipair_compare {
 };
 */
 struct _ipair_compare {
-    bool operator()(const std::pair<xfmpz, xfmpz>& a,
-                    const std::pair<xfmpz, xfmpz>& b) const
+    bool operator()(const std::pair<xfmpz_t, xfmpz_t>& a,
+                    const std::pair<xfmpz_t, xfmpz_t>& b) const
     {
         return fmpz_cmp(a.first.data, b.first.data) < 0;
     }
@@ -316,7 +316,7 @@ ex dcode_sDivisors(er e)
     if (fmpz_is_zero(eint_data(n)))
         return emake_node(gs.sym_sList.copy());
 
-    xfmpz_factor fs;
+    xfmpz_factor_t fs;
     fmpz_factor(fs.data, eint_data(n));
 
     ulong numdiv = 1;
@@ -332,9 +332,9 @@ ex dcode_sDivisors(er e)
     uex r(emake_parray_rank1(0, numdiv));
     fmpz * R = eparray_int_data(r.get());
 
-    std::set<std::pair<xfmpz, xfmpz>, _ipair_compare> H;
-    H.insert(std::pair<xfmpz, xfmpz>(xfmpz(ulong(1)), xfmpz(eint_data(n))));
-    xfmpz anext, bnext, rem;
+    std::set<std::pair<xfmpz_t, xfmpz_t>, _ipair_compare> H;
+    H.insert(std::pair<xfmpz_t, xfmpz_t>(xfmpz_t(ulong(1)), xfmpz_t(eint_data(n))));
+    xfmpz_t anext, bnext, rem;
 
     ulong aoff = 0;
     ulong boff = numdiv - 1;
@@ -364,7 +364,7 @@ ex dcode_sDivisors(er e)
             fmpz_mul(anext.data, R + aoff - 1, fs.data->p + i);
             if (fmpz_cmp(anext.data, bnext.data) > 0)
                 continue;
-            H.insert(std::pair<xfmpz, xfmpz>(xfmpz(std::move(anext)), xfmpz(std::move(bnext))));
+            H.insert(std::pair<xfmpz_t, xfmpz_t>(xfmpz_t(std::move(anext)), xfmpz_t(std::move(bnext))));
         }
     }
 
@@ -418,7 +418,7 @@ ex dcode_sGCD(er e)
     }
     else
     {
-        xfmpq t, g(0,1);
+        xfmpq_t t, g(0,1);
         for (size_t i = 1; i <= n; i++)
         {
             er x = echild(e,i);
@@ -493,7 +493,7 @@ ex dcode_sLCM(er e)
     }
     else
     {
-        xfmpz t, g;
+        xfmpz_t t, g;
         for (ulong i = 1; i <= n; i++)
         {
             er x = echild(e,i);

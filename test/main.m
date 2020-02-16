@@ -1,8 +1,10 @@
 $AssertFunction = Exit[17]&;
+Get["test/ContinuedFraction.m"];
 Get["test/arithmetic.m"];
-Get["test/algebra.m"];
 Get["test/part.m"];
+Get["test/flowcontrol.m"];
 Get["test/function.m"];
+Get["test/algebra.m"];
 Get["test/derivative.m"];
 Get["test/pattern.m"];
 Get["test/parse.m"];

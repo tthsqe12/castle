@@ -31,8 +31,8 @@ ex dcode_sZeta(er EE)
             {
                 if (a & 1)
                 {
-                    xfmpq r;
-                    xfmpz s(1-a);
+                    xfmpq_t r;
+                    xfmpz_t s(1-a);
                     arith_bernoulli_number(r.data, 1 - a);
                     fmpq_neg(r.data, r.data);
                     fmpq_div_fmpz(r.data, r.data, s.data);
@@ -66,10 +66,10 @@ ex dcode_sZeta(er EE)
                 else
                 {
                     a = a/2;
-                    std::vector<xfmpq> v;
+                    std::vector<xfmpq_t> v;
                     v.reserve(a);
-                    v.push_back(xfmpq(1,6));
-                    xfmpq t, p, u;
+                    v.push_back(xfmpq_t(1,6));
+                    xfmpq_t t, p, u;
                     for (slong n = 2; n <= a; n++)
                     {
                         fmpq_zero(t.data);
@@ -144,7 +144,7 @@ ex dcode_sFactorial(er e)
             if (fmpz_fits_si(eint_data(X)))
             {
                 slong n = fmpz_get_si(eint_data(X));
-                xfmpz z;
+                xfmpz_t z;
                 fmpz_fac_ui(z.data, n);
                 return emake_int_move(z);
             }
@@ -173,7 +173,7 @@ ex dcode_sFactorial(er e)
             return sqrtpi.release();
         }
 
-        xfmpq z(1,1);        
+        xfmpq_t z(1,1);        
         if (n > 0)
         {
             fmpz_mul_2exp(fmpq_denref(z.data), fmpq_denref(z.data), (n + 1)/2);
@@ -200,7 +200,7 @@ ex dcode_sFactorial(er e)
     }
     else if (eis_real(X))
     {
-        xarb z;
+        xarb_t z;
         slong p = ereal_number(X).wprec();
         arb_add_ui(z.data, ereal_number(X).data, 1, p + EXTRA_PRECISION_BASIC);
         arb_gamma(z.data, z.data, p + EXTRA_PRECISION_BASIC);
@@ -208,7 +208,7 @@ ex dcode_sFactorial(er e)
     }
     else if (eis_double(X))
     {
-        xarb z;
+        xarb_t z;
         slong p = 53;
         arb_set_d(z.data, edouble_number(X));
         arb_add_ui(z.data, z.data, 1, p + EXTRA_PRECISION_BASIC);

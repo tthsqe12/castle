@@ -260,21 +260,21 @@ ex eval_num(er e, slong prec)
         {
             case ETYPE_INT:
             {
-                xarb z;
+                xarb_t z;
                 arb_set_round_fmpz(z.data, eint_data(e), prec);
                 z.limit_prec(prec);
                 return emake_real_move(z);
             }
             case ETYPE_RAT:
             {
-                xarb z;
+                xarb_t z;
                 arb_set_fmpq(z.data, erat_data(e), prec);
                 z.limit_prec(prec);
                 return emake_real_move(z);
             }
             case ETYPE_REAL:
             {
-                xarb z;
+                xarb_t z;
                 arb_set(z.data, ereal_data(e));
                 z.limit_prec(prec);
                 return emake_real_move(z);
@@ -369,7 +369,7 @@ ex eval_num_limit_prec(er e, double p)
         mag_set_d_lower(z2, pow(2.0, -t));
         mag_mul_2exp_si(z2, z2, -n);
         mag_mul_lower(z1, z1, z2);
-        xarb z;
+        xarb_t z;
         arb_set(z.data, ereal_data(e));
         if (mag_cmp(z1, arb_radref(z.data)))
             mag_swap(z1, arb_radref(z.data));

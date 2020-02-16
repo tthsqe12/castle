@@ -1,6 +1,6 @@
 #include "box_lex.h"
 #include "boxes.h"
-#include "ex_parse_boxes.h"
+#include "ex_parse_box.h"
 #include "timing.h"
 
 
@@ -965,6 +965,11 @@ int blexer::add_char(char16_t c)
 }
 
 
+void errorbox::set_scolor(bsymer* T)
+{
+    return;
+}
+
 void nullbox::set_scolor(bsymer* T)
 {
     assert(false);
@@ -992,6 +997,74 @@ void rowbox::set_scolor(bsymer* T)
 
 void graphics3dbox::set_scolor(bsymer* T)
 {
+    return;
+}
+
+void monobox::set_scolor(bsymer* T)
+{
+    size_t len_module  = T->vars_module.size();
+    size_t len_block   = T->vars_block.size();
+    size_t len_table   = T->vars_table.size();
+    size_t len_pattern = T->vars_pattern.size();
+
+    bsymer B;
+    std::swap(B.vars_module, T->vars_module);
+    std::swap(B.vars_block, T->vars_block);
+    std::swap(B.vars_table, T->vars_table);
+    std::swap(B.vars_pattern, T->vars_pattern);
+
+    std::vector<iboxarrayelem> tchild;
+    for (auto y = array.begin(); y != array.end(); ++y)
+    {
+        for (auto x = y->begin(); x != y->end(); ++x)
+        {
+            tchild.push_back(iboxarrayelem(iboximm_make(*x)));
+        }
+        tchild.push_back(iboxarrayelem(new nullbox()));
+    }
+
+    B.add_scolor(tchild.data(), 0, tchild.size() - 1);
+
+    size_t toff = 0;
+    for (auto y = array.begin(); y != array.end(); ++y)
+    {
+        for (auto x = y->begin(); x != y->end(); ++x)
+        {
+            *x = iboximm_type(tchild[toff].cibox);
+            toff++;
+        }
+        delete ibox_to_ptr(tchild[toff].cibox);
+        toff++;
+    }
+
+
+
+/*
+    for (size_t k = 0; k < B.tokens.size(); k++)
+    {
+        if (B.tokens[k].lextype == lextype_pattern_1st)
+        {
+            box_patterns_vars.back().push_back(B.array + B.tokens[k].idx);
+        }
+    }
+    for (size_t k1 = 0; k1 < B.box_patterns_vars.size(); k1++)
+    {
+//std::cout << "pushing onto box_patterns_vars.back()" << std::endl;
+        for (size_t k2 = 0; k2 < B.box_patterns_vars[k1].size(); k2++)
+        {
+            box_patterns_vars.back().push_back(B.box_patterns_vars[k1][k2]);
+        }
+    }
+*/
+    assert(len_module  == B.vars_module.size());
+    assert(len_block   == B.vars_block.size());
+    assert(len_table   == B.vars_table.size());
+    assert(len_pattern == B.vars_pattern.size());
+    std::swap(B.vars_module, T->vars_module);
+    std::swap(B.vars_block, T->vars_block);
+    std::swap(B.vars_table, T->vars_table);
+    std::swap(B.vars_pattern, T->vars_pattern);
+    
     return;
 }
 
@@ -1116,6 +1189,7 @@ void bsymer::add_scolor(iboxarrayelem * Array, int32_t starti, int32_t stopi)
     for (int32_t i = starti; i < stopi; i++)
     {
         int32_t type = ibox_type(array[i].cibox);
+//printf("type[%d] = %d\n", i, type);
         if (type >= 0)
         {
             if ((type & 0x0FFFFFF) == '(' + 65536*lextype_parenth_open)
@@ -1219,7 +1293,7 @@ void bsymer::add_scolor(iboxarrayelem * Array, int32_t starti, int32_t stopi)
 //printf("add scolor here 2\n");
 
 
-            if (type < BNTYPE_NULLER && type != BNTYPE_STUB)
+            if (type < BNTYPE_NULLER/* && type != BNTYPE_STUB*/)
             {
 
 //printf("add scolor here 2A\n");

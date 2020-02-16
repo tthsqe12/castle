@@ -2327,9 +2327,35 @@ struct {const char * s; int32_t c;} esccodes[] = {
 
 };
 
-
-size_t readonechar16(char16_t&c, const unsigned char * a)
+int32_t esccode_to_char(const char * s)
 {
+    for (size_t i = 0; i < 670; i++)
+    {
+        if (strcmp(s, esccodes[i].s) == 0)
+        {
+            return esccodes[i].c;
+        }
+    }
+    return 0;
+}
+
+
+char16_t escapedname_to_char(const char * s)
+{
+    for (size_t i = 0; i < NAMED_CHARS_COUNT; i++)
+    {
+        if (strcmp(s, namedchar_cstr[i]) == 0)
+        {
+            return namedchar_code[i];
+        }
+    }
+    return 0;
+}
+
+
+size_t readonechar16(char16_t&c, const char * A)
+{
+    const unsigned char* a = reinterpret_cast<const unsigned char*>(A);
     if ((a[0] & 0x80) == 0)
     {
         c = a[0] & 0x7F;
@@ -2354,25 +2380,21 @@ size_t readonechar16(char16_t&c, const unsigned char * a)
 
 void stdstring_pushback_char16(std::string&s, char16_t c)
 {
-
-//std::cout << " v[" << i << "] = " << int(c) << std::endl;
-
-        if (c < 128)
-        {
-            s.push_back(char(c));
-        }
-        else if (c < 2048)
-        {
-            s.push_back(char(0xC0 | ((c >> 6) & 0x1F)));
-            s.push_back(char(0x80 | ((c >> 0) & 0x3F)));
-        }
-        else
-        {
-            s.push_back(char(0xE0 | ((c >> 12) & 0x0F)));
-            s.push_back(char(0x80 | ((c >> 6) & 0x3F)));
-            s.push_back(char(0x80 | ((c >> 0) & 0x3F)));
-        }
-//std::cout << "length " << s.length() << "s: " << s << std::endl;
+    if (c < 128)
+    {
+        s.push_back(char(c));
+    }
+    else if (c < 2048)
+    {
+        s.push_back(char(0xC0 | ((c >> 6) & 0x1F)));
+        s.push_back(char(0x80 | ((c >> 0) & 0x3F)));
+    }
+    else
+    {
+        s.push_back(char(0xE0 | ((c >> 12) & 0x0F)));
+        s.push_back(char(0x80 | ((c >> 6) & 0x3F)));
+        s.push_back(char(0x80 | ((c >> 0) & 0x3F)));
+    }
 }
 
 void stdstring_append_char16v(std::string&s, std::vector<char16_t>&v)
@@ -2381,23 +2403,10 @@ void stdstring_append_char16v(std::string&s, std::vector<char16_t>&v)
     {
         stdstring_pushback_char16(s, v[i]);
     }
-//std::cout << "length " << s.length() << "s: " << s << std::endl;
 }
 
 
-int32_t esccode_to_char(const char * s)
-{
-    for (size_t i = 0; i < 670; i++)
-    {
-        if (strcmp(s, esccodes[i].s) == 0)
-        {
-            return esccodes[i].c;
-        }
-    }
-    return 0;
-}
-
-void stdstring_pushback_cvtascii(std::string&s, char16_t c, bool esc)
+void stdstring_pushback_asciiesc(std::string&s, char16_t c, bool ascii, bool esc)
 {
     if (' ' <= c && c < 128)
     {
@@ -2409,69 +2418,39 @@ void stdstring_pushback_cvtascii(std::string&s, char16_t c, bool esc)
     }
     else
     {
-        for (size_t i = 0; i < NAMED_CHARS_COUNT; i++)
+        if (ascii)
         {
-            if (c == namedchar_code[i])
+            for (size_t i = 0; i < NAMED_CHARS_COUNT; i++)
             {
-                s.append(namedchar_cstr[i]);
-                return;
+                if (c == namedchar_code[i])
+                {
+                    s.append(namedchar_cstr[i]);
+                    return;
+                }
             }
-        }
-        if (c == 10)
-        {
-            s.push_back(c);
-            return;
-        }
-        s.push_back('\\');
-        s.push_back('x');
-        for (int i = 3; i >= 0; i--)
-        {
-            uint8_t d = (c >> (4*i)) & 15;
-            s.push_back(d < 10 ? d + '0' : d + 'a' - 10);
-        }
-    }
-}
+            s.push_back('\\');
+            s.push_back('x');
+            for (int i = 3; i >= 0; i--)
+            {
+                char d = (c >> (4*i)) & 15;
+                s.push_back(d < 10 ? d + '0' : d + 'a' - 10);
+            }
 
-char16_t escapedname_to_char(const char * s)
-{
-    for (size_t i = 0; i < NAMED_CHARS_COUNT; i++)
-    {
-        if (strcmp(s, namedchar_cstr[i]) == 0)
-        {
-            return namedchar_code[i];
-        }
-    }
-    return 0;
-}
-
-
-void stdstring_append_cvtascii(std::string&s, std::string&a, bool esc)
-{
-    for (size_t i = 0; i < a.size(); i++)
-    {
-        char16_t c = (unsigned char)(a[i]);
-//std::cout << " v[" << i << "] = " << int(c) << std::endl;
-
-        if ((a[i] & 0x80) == 0)
-        {
-            c = a[i] & 0x7F;            
-        }
-        else if ((a[i+0] & 0xE0) == 0xC0)
-        {
-            assert(i + 1 < a.size());
-            assert((a[i+1] & 0xC0) == 0x80);
-            c = ((a[i+0] & 0x1F) << 6) + ((a[i+1] & 0x3F) << 0);
-            i+=1;
         }
         else
         {
-            assert(i + 2 < a.size());
-            assert((a[i+0] & 0xE0) ==0xE0);
-            assert((a[i+1] & 0xC0) ==0x80);
-            assert((a[i+2] & 0xC0) ==0x80);
-            c = ((a[i+0] & 0x0F) << 12) + ((a[i+1] & 0x3F) << 6) + ((a[i+2] & 0x3F) << 0);
-            i+=2;
+            stdstring_pushback_char16(s, c);
         }
-        stdstring_pushback_cvtascii(s, c, esc);
+    }
+}
+
+
+void stdstring_append_asciiesc(std::string&s, std::string&a, bool ascii, bool esc)
+{
+    for (size_t i = 0; i < a.size();)
+    {
+        char16_t c;
+        i += readonechar16(c, a.c_str() + i);
+        stdstring_pushback_asciiesc(s, c, ascii, esc);
     }
 }

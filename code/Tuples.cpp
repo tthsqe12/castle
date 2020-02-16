@@ -35,7 +35,7 @@ ex dcode_sTuples(er e)
             {
                 return emake_node(gs.sym_sList.copy());
             }
-            xfmpz total_size(UWORD(1));
+            xfmpz_t total_size(UWORD(1));
             for (size_t i = 0; i < n; i++)
             {
                 fmpz_mul_ui(total_size.data, total_size.data, k);
@@ -84,7 +84,7 @@ ex dcode_sTuples(er e)
             {
                 return ecopy(f);
             }
-            xfmpz array_size(UWORD(1));
+            xfmpz_t array_size(UWORD(1));
             std::vector<size_t> array_dims; 
             for (size_t i = 1; i <= r; i++)
             {
@@ -129,7 +129,7 @@ ex dcode_sTuples(er e)
             {
                 return emake_node(gs.sym_sList.copy());
             }
-            xfmpz total_size(UWORD(1));
+            xfmpz_t total_size(UWORD(1));
             for (size_t i = 0; i < n; i++)
             {
                 fmpz_mul_ui(total_size.data, total_size.data, k);
@@ -210,7 +210,7 @@ ex dcode_sTuples(er e)
         std::vector<size_t> lengths;
         lengths.resize(n, 0);
         bool have_zero_length = false;
-        xfmpz total_size(UWORD(1));
+        xfmpz_t total_size(UWORD(1));
 
         for (size_t i = 1; i <= n; i++)
         {

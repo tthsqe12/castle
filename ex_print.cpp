@@ -130,7 +130,7 @@ ex eval_with_minus_divide(ex E)
         else if (eis_rat(e.get()))
         {
             bool has_minus = false;
-            xfmpz a, b;
+            xfmpz_t a, b;
             fmpz_set(a.data, fmpq_numref(erat_data(e.get())));
             fmpz_set(b.data, fmpq_denref(erat_data(e.get())));
             if (fmpz_sgn(a.data) < 0)

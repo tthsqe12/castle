@@ -354,7 +354,7 @@ ex arb_imag_asinh(ex Y)
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     ex Z = emake_real();
     uex z(Z);
-    xarb one;
+    xarb_t one;
     arb_one(one.data);
     if (arb_gt(ereal_data(Y), one.data))
     {
@@ -422,7 +422,7 @@ ex arb_imag_atan(ex Y)
     slong p = ereal_number(Y).wprec() + EXTRA_PRECISION_BASIC;
     ex Z = emake_real();
     uex z(Z);
-    xarb one;
+    xarb_t one;
     arb_one(one.data);
     if (arb_gt(ereal_data(Y), one.data))
     {
@@ -1388,7 +1388,7 @@ ex dcode_sArcCos(er e)
                 slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
                 ex Z = emake_real();
                 uex z(Z);
-                xarb one;
+                xarb_t one;
                 arb_one(one.data);
                 if (arb_gt(ereal_data(X), one.data))
                 {
@@ -1483,7 +1483,7 @@ ex dcode_sArcCosh(er e)
                 slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
                 ex Z = emake_real();
                 uex z(Z);
-                xarb one;
+                xarb_t one;
                 arb_one(one.data);
                 if (arb_ge(ereal_data(X), one.data))
                 {
@@ -1579,7 +1579,7 @@ ex dcode_sArcSin(er e)
                 slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
                 ex Z = emake_real();
                 uex z(Z);
-                xarb one;
+                xarb_t one;
                 arb_one(one.data);
                 if (arb_gt(ereal_data(X), one.data))
                 {
@@ -1788,7 +1788,7 @@ ex arb_real_atanh(ex X)
     slong p = ereal_number(X).wprec() + EXTRA_PRECISION_BASIC;
     ex Z = emake_real();
     uex z(Z);
-    xarb one;
+    xarb_t one;
     arb_one(one.data);
     if (arb_gt(ereal_data(X), one.data))
     {

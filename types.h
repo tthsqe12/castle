@@ -17,6 +17,29 @@
 
 #include "flint/flint.h"
 
+
+inline char* _int_print(char* s, uint64_t x) {
+    uint64_t r = x%10;
+    uint64_t q = x/10;
+    if (q!=0) {s = _int_print(s, q);}
+    *s++ = r + '0';
+    return s; 
+}
+
+inline char* _int_print(char* s, int64_t x) {
+    if (x<0) {*s++='-';x=-x;}
+    return _int_print(s,(uint64_t)x);
+}
+
+inline std::string stdstring_to_string(int a)
+{
+    char buffer[30];
+    char* end = _int_print(buffer, (int64_t)a);
+    *end = 0;
+    std::string s(buffer);
+    return s;
+}
+
 class exception_exit: public std::exception {
 public:
     int retcode;
@@ -53,9 +76,21 @@ public:
     exception_sym_sGoto(void * d) : data(d) {}
 };
 
+class exception_sym_sReturn: public std::exception  {
+public:
+    void * data;
+    exception_sym_sReturn(void * d) : data(d) {}
+};
 
-#define likely(x)       __builtin_expect((x),1)
-#define unlikely(x)     __builtin_expect((x),0)
+class exception_sym_sReturn_2: public std::exception  {
+public:
+    void * data;
+    exception_sym_sReturn_2(void * d) : data(d) {}
+};
+
+
+#define likely(x)       __builtin_expect(!!(x),1)
+#define unlikely(x)     __builtin_expect(!!(x),0)
 
 #define EXTRA_PRECISION_BASIC 40
 

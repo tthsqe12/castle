@@ -5,6 +5,7 @@
 #include "ex_cont.h"
 #include "math.h"
 
+#include "flint/profiler.h"
 
 static void _get_exact_cfrac(
     _fmpz_vector_t s,
@@ -67,8 +68,14 @@ static void _get_ball_cfrac(
 
     if (fmpz_cmp(x->left_num, x->left_den) > 0)
     {
+timeit_t timer;
+
+timeit_start(timer);
         /* 1 < x */
         _fmpq_ball_get_cfrac(s, M, 1, x);
+timeit_stop(timer);
+flint_printf("ball cfrac time: %wd\n", timer->wall);
+
     }
     else if (fmpz_sgn(x->left_num) > 0
                  && fmpz_cmp(x->right_num, x->right_den) < 0)
@@ -223,6 +230,12 @@ static int _arb_to_fmpq_ball(_fmpq_ball_t x, const arb_t y)
     fmpz_init(e);
     fmpz_one(x->left_den);
     fmpz_one(x->right_den);
+
+timeit_t timer;
+
+timeit_start(timer);
+
+
     arb_get_interval_fmpz_2exp(x->left_num, x->right_num, e, y);
     if (!fmpz_fits_si(e))
     {
@@ -241,6 +254,11 @@ static int _arb_to_fmpq_ball(_fmpq_ball_t x, const arb_t y)
         fmpz_mul_2exp(x->right_num, x->right_num, n);
     }
     x->exact = 0;
+
+timeit_stop(timer);
+flint_printf("arb->ball time: %wd\n", timer->wall);
+
+
     return 0;
 }
 
@@ -310,10 +328,10 @@ ex _rationalize_double(er dou)
     assert(eis_double(dou));
 
     slong t;
-    xfmpz s, u, v, w, a, b, B1, B2, B1mid, B2mid, A1, A2;
-    x_fmpq_ball X;
-    x_fmpz_vector S;
-    x_fmpz_mat22 M;
+    xfmpz_t s, u, v, w, a, b, B1, B2, B1mid, B2mid, A1, A2;
+    x_fmpq_ball_t X;
+    x_fmpz_vector_t S;
+    x_fmpz_mat22_t M;
     nice_ball x;
 
     x.set_double(edouble_number(dou));
@@ -500,9 +518,9 @@ ex dcode_iRealContinuedFraction(er e)
     if (!eis_int(N) || !fmpz_fits_si(eint_data(N)))
         return ecopy(e);
 
-    x_fmpq_ball x;
-    x_fmpz_vector s;
-    x_fmpz_mat22 M;
+    x_fmpq_ball_t x;
+    x_fmpz_vector_t s;
+    x_fmpz_mat22_t M;
 
     _fmpz_mat22_one(M.data);
 
@@ -553,10 +571,10 @@ ex dcode_iQuadraticContinuedFraction(er e)
         return ecopy(e);
     }
 
-    xfmpz a(eint_data(echild(e,1)));
-    xfmpz b(eint_data(echild(e,2)));
-    xfmpz c(eint_data(echild(e,3)));
-    xfmpz d, s, t, m, A, B, C;
+    xfmpz_t a(eint_data(echild(e,1)));
+    xfmpz_t b(eint_data(echild(e,2)));
+    xfmpz_t c(eint_data(echild(e,3)));
+    xfmpz_t d, s, t, m, A, B, C;
 
     fmpz_mul(m.data, b.data, b.data);
     fmpz_mul(t.data, a.data, c.data);
@@ -628,9 +646,9 @@ ex dcode_sContinuedFraction(er e)
 
     if (elength(e) == 1)
     {
-        x_fmpq_ball x;
-        x_fmpz_vector s;
-        x_fmpz_mat22 M;
+        x_fmpq_ball_t x;
+        x_fmpz_vector_t s;
+        x_fmpz_mat22_t M;
         er X = echild(e,1);
         if (eis_real(X))
         {
@@ -720,15 +738,15 @@ ex ncode_sChampernowneNumber(er e, slong prec)
     if (elength(e) == 1 && !eis_int(echild(e,1)))
         return ecopy(e);
 
-    xfmpz B(UWORD(10));
+    xfmpz_t B(UWORD(10));
     if (elength(e) == 1)
         fmpz_set(B.data, eint_data(echild(e,1)));
 
     if (fmpz_cmp_ui(B.data, 1) <= 0)
         return ecopy(e);
 
-    xarb z, s, d, u, v;
-    xfmpz a, t0, t1, t2, t3, t4, t6;
+    xarb_t z, s, d, u, v;
+    xfmpz_t a, t0, t1, t2, t3, t4, t6;
 
     if (!fmpz_abs_fits_ui(B.data))
     {
@@ -744,8 +762,8 @@ ex ncode_sChampernowneNumber(er e, slong prec)
 
     double mlog2u = (b - 1)*log2(b);
 
-    std::vector<xfmpz> ck;
-    ck.push_back(xfmpz(UWORD(1)));
+    std::vector<xfmpz_t> ck;
+    ck.push_back(xfmpz_t(UWORD(1)));
     ulong k = 1;
     while (true)
     {

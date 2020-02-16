@@ -570,7 +570,7 @@ RemoveEdge:
 
 class Matrix {
 public:
-    xfmpz _11, _12, _21, _22;
+    xfmpz_t _11, _12, _21, _22;
 
     Matrix() : _11((ulong)(1)), _22((ulong)(1)) {};
 
@@ -629,7 +629,7 @@ public:
         fmpz_set(_22.data, other._22.data);
     };
 
-    void set(xfmpz &a11, xfmpz &a12, xfmpz &a21, xfmpz &a22)
+    void set(xfmpz_t &a11, xfmpz_t &a12, xfmpz_t &a21, xfmpz_t &a22)
     {
         fmpz_set(_11.data, a11.data);
         fmpz_set(_12.data, a12.data);
@@ -686,7 +686,7 @@ public:
     // this = this.m
     void RMulBy(Matrix m)
     {
-        xfmpz a, b, c, d;
+        xfmpz_t a, b, c, d;
         fmpz_mul(a.data, _11.data, m._11.data); fmpz_addmul(a.data, _12.data, m._21.data);
         fmpz_mul(b.data, _11.data, m._12.data); fmpz_addmul(b.data, _12.data, m._22.data);
         fmpz_mul(c.data, _21.data, m._11.data); fmpz_addmul(c.data, _22.data, m._21.data);
@@ -700,7 +700,7 @@ public:
     // this = inverse(m).this
     void LMulByInverse(Matrix m)
     {
-        xfmpz a, b, c, d;
+        xfmpz_t a, b, c, d;
         fmpz_mul(a.data, _11.data, m._22.data); fmpz_submul(a.data, _21.data, m._12.data);
         fmpz_mul(b.data, _12.data, m._22.data); fmpz_submul(b.data, _22.data, m._12.data);
         fmpz_mul(c.data, _21.data, m._11.data); fmpz_submul(c.data, _11.data, m._21.data);
@@ -713,7 +713,7 @@ public:
 
     bool det_is_one()
     {
-        xfmpz s, t;
+        xfmpz_t s, t;
         fmpz_mul(t.data, _11.data, _22.data);
         fmpz_mul(s.data, _12.data, _21.data);
         fmpz_add_ui(s.data, s.data, 1);
@@ -725,7 +725,7 @@ public:
 
 int cmp_norm(const Matrix & a, const Matrix & b)
 {
-    xfmpz t, asum, bsum, amax, bmax;
+    xfmpz_t t, asum, bsum, amax, bmax;
     int cmp;
 
 //std::cout << "cmping: "; a.print(); std::cout << std::endl;
@@ -835,7 +835,7 @@ ex Matrix::get_ex() const
 
 ex Matrix::get_ex_neg() const
 {
-    xfmpz t11(_11), t12(_12), t21(_21), t22(_22);
+    xfmpz_t t11(_11), t12(_12), t21(_21), t22(_22);
     fmpz_neg(t11.data, t11.data);
     fmpz_neg(t12.data, t12.data);
     fmpz_neg(t21.data, t21.data);
@@ -1496,7 +1496,7 @@ bool Group::meet(const Group & a, const Group & b)
 }
 
 
-u32 apply_perm_pow(std::vector<std::vector<u32>> & p, const xfmpz & e, u32 r)
+u32 apply_perm_pow(std::vector<std::vector<u32>> & p, const xfmpz_t & e, u32 r)
 {
     mp_bitcnt_t bits = fmpz_bits(e.data);
 
@@ -1528,7 +1528,7 @@ u32 Group::matrix_coset(const Matrix & mm)
     int s11, s12, s21, s22;
     Matrix m(mm);
     m.invert();
-    xfmpz n;
+    xfmpz_t n;
     u32 r = 1;
 //    std::string w;
 
@@ -1927,7 +1927,7 @@ bool Group::from_generators_ex(er l)
     size_t nu = 1;
     std::vector<GraphEdge> sm;
     Matrix m;
-    xfmpz a, b, a1, a2, b1, b2;
+    xfmpz_t a, b, a1, a2, b1, b2;
 
     for (size_t i = 1; i <= elength(l); i++)
     {

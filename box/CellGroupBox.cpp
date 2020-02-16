@@ -37,7 +37,17 @@ visitRet cellgroupbox::visit(visitArg m)
             return visitret_OK;
         }
     }
+}
 
+boxbase * cellgroupbox::copy()
+{
+    size_t n = child.size();
+    cellgroupbox * r = new cellgroupbox(n);
+    for (size_t i = 0; i < n; i++)
+    {
+        r->child[i].cbox = child[i].cbox->copy();
+    }
+    return r;
 }
 
 ex cellgroupbox::get_ex()
@@ -45,7 +55,7 @@ ex cellgroupbox::get_ex()
     uex v(gs.sym_sList.get(), child.size());
     for (int32_t i = 0; i < child.size(); i++)
         v.push_back(child[i].cbox->get_ex());
-    return emake_node(gs.sym_sCellGroup.copy(), v.release());
+    return emake_node(gs.sym_sCellGroupData.copy(), v.release());
 }
 
 /* measure **********************************/
@@ -77,7 +87,7 @@ void cellgroupbox::draw_pre(boxdrawarg da)
 
 void cellgroupbox::draw_main(boxdrawarg da)
 {
-    _draw_cellgroup_bracket(this, da);
+    _draw_cellgroup_bracket(this, da, false);
     for (auto& i : child)
     {
         i.cbox->draw_main(boxdrawarg(da, i.offx, i.offy));

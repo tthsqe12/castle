@@ -94,7 +94,7 @@ ex dcode_sRandomInteger(er e)
             return ecopy(e);
         }
 
-        xfmpz diff;
+        xfmpz_t diff;
         fmpz_sub(diff.data, eint_data(upper), eint_data(lower));
         if (fmpz_sgn(diff.data) < 0)
         {

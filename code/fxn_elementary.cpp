@@ -560,7 +560,7 @@ ex dcode_sSqrt(er EE)
             }
             case ETYPE_REAL:
             {
-                xarb z;
+                xarb_t z;
                 slong p = ereal_number(X).wprec();
                 arb_sqrt(z.data, ereal_data(X), p + EXTRA_PRECISION_BASIC);
                 return emake_real_move(z);

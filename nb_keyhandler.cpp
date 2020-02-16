@@ -18,330 +18,8 @@
 #include "box_convert.h"
 
 
-//void boxplot3d_render(boxplot3d * us);
-
-
-int notebook::stub_key_up()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-//        return boxtext_key_up(_us());
-    }
-    return 0;
-}
-
-int notebook::stub_key_down()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-//        return boxtext_key_down(_us());
-    }
-    return 0;
-}
-
-void notebook::stub_key_end()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-//        boxtext_key_end(_us());
-        _invalidate_downto(1);
-    }
-    return;
-}
-
-void notebook::stub_key_home()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-//        boxtext_key_home(_us());
-        _invalidate_downto(1);
-    }
-    return;
-}
-
-
-void notebook::stub_key_tab()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-        boxtext * us = bto_text(_us());
-//        boxtext_insert_tab(us);
-        _invalidate_downto(1);
-    }
-    return;
-}
-
-void notebook::stub_insert_newline()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-        boxtext * us = bto_text(_us());
-//        boxtext_insert_newline(us);
-        _invalidate_downto(1);
-    }
-    return;
-}
-
-void notebook::stub_key_backspace()
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-        boxtext * us = bto_text(_us());
-//        boxtext_backspace(us);
-        _invalidate_downto(1);
-    }
-    return;
-}
-
-void notebook::stub_insert_char(char16_t c)
-{
-    if (bptr_type(_us()) == BNTYPE_TEXT)
-    {
-        boxtext * us = bto_text(_us());
-//        boxtext_insert_char(us, c);
-        _invalidate_downto(1);
-    }
-    else if (bptr_type(_us()) == BNTYPE_PLOT3D)
-    {
-/*
-        boxplot3d * us = (boxplot3d *) uus;
-        quaterion_t q;
-
-        if (c == 'w') {
-            q->w = cos(-0.03); q->x = sin(-0.03); q->y = 0; q->z = 0;
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 's') {
-            q->w = cos(+0.03); q->x = sin(+0.03); q->y = 0; q->z = 0;
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 'a') {
-            q->w = cos(-0.03); q->x = 0; q->y = sin(-0.03); q->z = 0;
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 'd') {
-            q->w = cos(+0.03); q->x = 0; q->y = sin(+0.03); q->z = 0;
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 'e') {
-            q->w = cos(-0.03); q->x = 0; q->y = 0; q->z = sin(-0.03);
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 'q') {
-            q->w = cos(+0.03); q->x = 0; q->y = 0; q->z = sin(+0.03);
-            QuatMul(us->qangle, q, us->qangle);
-            boxplot3d_render(us);
-        } else if (c == 'x') {
-            us->fov = us->fov * 1.05;
-            boxplot3d_render(us);
-        } else if (c == 'c') {
-            us->fov = us->fov / 1.05;
-            boxplot3d_render(us);
-        }
-*/
-    }
-}
-
-
-
-
-
-
-bool notebook::placeholder_selected()
-{
-    if (_depth() < 1 || selection.type != SELTYPE_ROW)
-        return false;
-
-    if (bnode_len(_parent()) != 2)
-        return false;
-
-    if (!bis_char(bnode_child(_parent(),0), CHAR_Placeholder))
-        return false;
-
-    return true;
-}
-
-
-void notebook::insert_placholder_if_needed()
-{
-    assert(we_are_legal());
-
-//printf("insert_placholder_if_needed\n");
-
-    if (bnode_type(_parent()) != BNTYPE_ROW)
-    {
-        return;
-    }
-    if (bnode_len(_parent()) == 1)
-    {
-        int t = bnode_type(_gparent());
-        if (    t == BNTYPE_SQRT || t == BNTYPE_GRID || t == BNTYPE_FRAC
-             || t == BNTYPE_SUB || t == BNTYPE_SUBSUPER || t == BNTYPE_SUPER
-             || t == BNTYPE_UNDER || t == BNTYPE_OVER || t == BNTYPE_UNDEROVER)
-        {
-            _insert(boxchar_create(CHAR_Placeholder));
-            _right1();
-            selection.type = SELTYPE_ROW;
-            selection.data.resize(1);
-            selection.data[0] = 0;
-        }
-
-    }
-}
-
-void notebook::scroll_up()
-{
-    offy += glb_image.sizey/10;
-}
-
-void notebook::scroll_down()
-{
-    offy -= glb_image.sizey/10;
-}
-
-void notebook::select_side_placeholder_if_needed(int side)
-{
-    assert(we_are_legal());
-
-    if (bnode_type(_parent()) != BNTYPE_ROW)
-    {
-        return;
-    }
-    if (bnode_len(_parent()) == 2 && bis_char(bnode_child(_parent(),0), CHAR_Placeholder))
-    {
-        selection.type = SELTYPE_ROW;
-        selection.data.resize(1);
-        assert(_pi() < 2);
-        if (side == 0)
-        {
-            selection.data[0] = 1;
-            if (_pi() == 1)
-            {
-                _left1();
-            }
-        }
-        else
-        {
-            selection.data[0] = 0;
-            if (_pi() == 0)
-            {
-                _right1();
-            }
-        }
-    }
-}
-
-
-void notebook::select_placeholder_if_needed()
-{
-    assert(we_are_legal());
-
-    if (bnode_type(_parent()) != BNTYPE_ROW)
-    {
-        return;
-    }
-    if (   bnode_len(_parent()) == 2
-        && _pi() == 1 
-        && bis_char(bnode_child(_parent(),0), CHAR_Placeholder))
-    {
-        selection.type = SELTYPE_ROW;
-        selection.data.resize(1);
-        selection.data[0] = 0;
-    }
-}
-
-
-
-void notebook::select_prev_if_possible()
-{
-    int npi, i;
-    box topnode = _us();
-    boxnode * parent = bto_node(_parent());
-    int pi = _pi();
-
-    if (selection.type == SELTYPE_NONE && boxnode_type(parent) == BNTYPE_ROW)
-    {
-        npi = pi;
-        while (npi > 0)
-        {
-            int mtype, ptype;
-            if (!bis_char(parent->array[npi - 1].child))
-            {
-                if (pi==npi && bis_node(parent->array[npi - 1].child))
-                {
-                    npi--;
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            else
-            {
-                ptype = btype(parent->array[npi - 1].child)&65535;
-                if (ptype == ']' || ptype == '}' || ptype == ')' || ptype == CHAR_RightDoubleBracket)
-                {
-                    std::stack<int> estack;
-                    estack.push(ptype);
-                    while (--npi > 0 && estack.size() > 0) {
-                        if (!bis_char(parent->array[npi - 1].child)) {
-                            continue;
-                        }
-                        ptype = btype(parent->array[npi - 1].child)&65535;
-                        if (ptype == ']' || ptype == '}' || ptype == ')' || ptype == CHAR_RightDoubleBracket) {
-                            mtype = 0;
-                            estack.push(ptype);
-                        } else if (ptype == '[') {
-                            mtype = ']';
-                        } else if (ptype == CHAR_LeftDoubleBracket) {
-                            mtype = CHAR_RightDoubleBracket;
-                        } else if (ptype == '(') {
-                            mtype = ')';
-                        } else if (ptype == '{') {
-                            mtype = '}';
-                        } else {
-                            continue;
-                        }
-                        if (estack.top() == mtype) {
-                            estack.pop();
-                        } else {
-                            estack.push(ptype);
-                        }                
-                    }
-                }
-                else if (isletterchar(ptype) || ('0' <= ptype && ptype <= '9'))
-                {
-                    --npi;
-                }
-                else if (pi==npi && (ptype == CHAR_Sum || ptype == CHAR_Product))
-                {
-                    --npi;
-                    break;
-                } else {
-                    break;
-                }
-            }
-        }
-        if (npi < pi)
-        {
-            selection.type = SELTYPE_ROW;
-            selection.data.resize(1);
-            selection.data[0] = npi;
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
 /**************** navigation **************/
-
+#if 0
 bool _notebook_click_helper(boxnode * us, std::vector<int>&istack, int x, int y) {
 
 //printf("Us type: %d\n",btype(Us));
@@ -558,53 +236,47 @@ bool _notebook_click_helper(boxnode * us, std::vector<int>&istack, int x, int y)
     }
 }
 
+#endif
+
 void notebook::handle_click(int x, int y)
 {
 //std::cout << "handle_click: " << x << "," << y << std::endl;
-    if (handle_cellclick(x,y,false))
-    {
-        return;
-    }
-    cursor_needs_fitting = true;
-    std::vector<int> istack;
-    _notebook_click_helper(root, istack, x, y);
-    selection.type = SELTYPE_NONE;
-    cursor1.resize(1);
-    for (size_t i = 0; i < istack.size(); i++)
-    {
-        _down1(istack[i]);
-    }
+//    if (handle_cellclick(x,y,false))
+//    {
+//        return;
+//    }
+//    cursor_needs_fitting = true;
+//    std::vector<int> istack;
+//    _notebook_click_helper(root, istack, x, y);
+//    selection.type = SELTYPE_NONE;
+//    cursor1.resize(1);
+//    for (size_t i = 0; i < istack.size(); i++)
+//    {
+//        _down1(istack[i]);
+//    }
     return;
 }
 
 void notebook::handle_doubleclick(int x, int y)
 {
 //std::cout << "handle_click: " << x << "," << y << std::endl;
-    if (handle_cellclick(x,y,true))
-    {
-        return;
-    }
-    cursor_needs_fitting = true;
-    std::vector<int> istack;
-    _notebook_click_helper(root, istack, x, y);
-    selection.type = SELTYPE_NONE;
-    cursor1.resize(1);
-    for (size_t i = 0; i < istack.size(); i++)
-    {
-        _down1(istack[i]);
-    }
+//    if (handle_cellclick(x,y,true))
+//    {
+//        return;
+//    }
+//    cursor_needs_fitting = true;
+//    std::vector<int> istack;
+//    _notebook_click_helper(root, istack, x, y);
+//    selection.type = SELTYPE_NONE;
+//    cursor1.resize(1);
+//    for (size_t i = 0; i < istack.size(); i++)
+//    {
+//        _down1(istack[i]);
+//    }
     return;
 }
 
-void notebook::zoom_in() {
-    set_zoom(zoomint + 1);
-}
-
-void notebook::zoom_out() {
-    set_zoom(zoomint - 1);
-}
-
-
+#if 0
 int bnode_len_visible(box b) {
     return bnode_type(b) == BNTYPE_CELL ? 1 : bnode_len(b);
 }
@@ -782,6 +454,7 @@ void notebook::goto_prev_cellbreak()
 
 //std::cout << "goto_prev_cellbreak returning" << std::endl;
 }
+#endif
 /*
 void notebook::preorder_prev() {
 
@@ -835,6 +508,7 @@ void notebook::get_cursor_coor(int&globx, int&globy)
 }
 */
 
+#if 0
 void notebook::get_cursor_xytheta(int32_t&globx, int32_t&globy, uint32_t&theta)
 {
     double usx = globx;
@@ -1047,60 +721,6 @@ void notebook::move_down()
     }
 }
 
-
-void notebook::key_up()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-    if (selection.type == SELTYPE_CELL)
-    {
-        if (_move_from_cell_sel(-1))
-        {
-            return;
-        }
-    }
-    selection.type = SELTYPE_NONE;
-    if (we_in_stub())
-    {
-        if (stub_key_up())
-        {
-            return;
-        }
-    }
-    if (we_in_row() || we_at_cellbreak())
-    {
-        move_up();
-    }
-    select_side_placeholder_if_needed(0);
-}
-
-
-void notebook::key_down()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-    if (selection.type == SELTYPE_CELL)
-    {
-        if (_move_from_cell_sel(1))
-        {
-            return;
-        }
-    }
-    selection.type = SELTYPE_NONE;
-    if (we_in_stub())
-    {
-        if (stub_key_down())
-        {
-            return;
-        }
-    }
-    if (we_in_row() || we_at_cellbreak())
-    {
-        move_down();
-    }
-    select_side_placeholder_if_needed(1);
-}
-
 void notebook::fixselection()
 {
     selection.type = SELTYPE_NONE;
@@ -1179,594 +799,11 @@ void notebook::fixselection()
         }
     }
 }
+#endif
 
-void notebook::key_shiftdown()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
 
-    if (selection.type == 0)
-    {
-        if (we_at_cellbreak())
-        {
-            if (!we_last_cellbreak())
-            {
-                selection.type = SELTYPE_CELL;
-                selection.data.resize(_depth());
-                for (size_t i = 0; i < _depth(); i++)
-                {
-                    selection.data[i] = cursor1[i].idx;
-                }
-                goto_next_cellbreak();
-            }
-            return;
-        }
-        else
-        {
-            selection.data.clear();
-            for (size_t i = 0; i < _depth(); i++)
-            {
-                selection.data.push_back(cursor1[i].idx);
-            }
-            move_down();
-//printf("after move down:\n"); print();
-            fixselection();
-//printf("after fix selection:\n"); print();
-            return;
-        }
-    }
-    else if (selection.type == SELTYPE_ROW)
-    {
-        int idx = selection.data[0];
-        selection.data.clear();
-        for (size_t i = 0; i + 1 < _depth(); i++)
-        {
-            selection.data.push_back(cursor1[i].idx);
-        }
-        selection.data.push_back(idx);
-        move_down();
-        fixselection();
-        return;
-    }
-    else if (selection.type == SELTYPE_GRID)
-    {
-        select_grid_dir(0, 1);
-        return;
-    }
-    else if (selection.type == SELTYPE_CELL)
-    {
-        assert(we_at_cellbreak());
-        goto_next_cellbreak();
-        return;
-    }
-    else
-    {
-        assert(false);
-    }
 
-}
-
-
-void notebook::key_shiftup()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-
-    if (selection.type == SELTYPE_NONE)
-    {
-        if (we_at_cellbreak())
-        {
-            if (!we_first_cellbreak())
-            {
-                selection.type = SELTYPE_CELL;
-                selection.data.resize(_depth());
-                for (size_t i = 0; i < _depth(); i++) {
-                    selection.data[i] = cursor1[i].idx;
-                }
-                goto_prev_cellbreak();
-            }
-            return;
-        }
-        else
-        {
-            selection.data.clear();
-            for (size_t i = 0; i < _depth(); i++)
-            {
-                selection.data.push_back(cursor1[i].idx);
-            }
-            move_up();
-            fixselection();
-            return;
-        }
-    }
-    else if (selection.type == SELTYPE_ROW)
-    {
-        int idx = selection.data[0];
-        selection.data.clear();
-        for (size_t i = 0; i + 1 < _depth(); i++)
-        {
-            selection.data.push_back(cursor1[i].idx);
-        }
-        selection.data.push_back(idx);
-        move_up();
-        fixselection();
-        return;
-    }
-    else if (selection.type == SELTYPE_GRID)
-    {
-        select_grid_dir(0, -1);
-        return;
-
-    } else if (selection.type == SELTYPE_CELL) {
-        assert(we_at_cellbreak());
-        goto_prev_cellbreak();
-        return;
-    }
-    else
-    {
-        assert(false);
-    }
-}
-
-
-
-void notebook::key_shiftleft()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->move(b, movearg_ShiftLeft);
-    assert(b == nullptr);
-    return;
-}
-
-void notebook::key_shiftright()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->move(b, movearg_ShiftRight);
-    assert(b == nullptr);
-    return;
-}
-
-void notebook::key_altup()
-{
-    cursor_needs_fitting = true;
-    myroot->insert_char(-11);
-    return;
-}
-
-void notebook::key_altdown()
-{
-    cursor_needs_fitting = true;
-    myroot->insert_char(-12);
-    return;
-}
-
-void notebook::key_altleft()
-{
-}
-
-void notebook::key_altright()
-{
-}
-
-
-void notebook::key_ctrlup()
-{
-}
-void notebook::key_ctrldown()
-{
-}
-void notebook::key_ctrlleft()
-{
-}
-void notebook::key_ctrlright()
-{
-}
-
-
-void notebook::key_left()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->move(b, movearg_Left);
-    assert(b == nullptr);
-    return;
-}
-
-
-
-
-
-
-void notebook::key_home()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-    if (we_in_stub())
-    {
-        stub_key_home();
-        return;
-    }
-    if (_depth() > 0 && bnode_type(_parent()) == BNTYPE_ROW)
-    {
-        selection.type = SELTYPE_NONE;
-        if (_pi() > 0)
-        {
-            _up1();
-            _down1(0);
-            return;
-        }
-        else
-        {
-            if (bnode_type(_ggparent()) == BNTYPE_ROW)
-            {
-                _up2();
-                _up1();
-                _down1(0);
-                return;
-            }
-            else
-            {
-                return;
-            }
-        }
-    }
-}
-
-
-
-
-void notebook::key_right()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->move(b, movearg_Right);
-    assert(b == nullptr);
-    return;
-}
-
-
-void notebook::key_end()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-    if (we_in_stub())
-    {
-        stub_key_end();
-        return;
-    }
-    if (_depth() > 0 && bnode_type(_parent()) == BNTYPE_ROW)
-    {
-        selection.type = SELTYPE_NONE;
-        if (_pi() + 1 < bnode_len(_parent()))
-        {
-            _up1();
-            _down1(-1);
-            return;
-        }
-        else
-        {
-            if (bnode_type(_ggparent()) == BNTYPE_ROW)
-            {
-                _up2();
-                _up1();
-                _down1(-1);
-                return;
-            }
-            else
-            {
-                return;
-            }
-        }
-    }
-}
-
-void notebook::insert_char(char16_t c)
-{
-    cursor_needs_fitting = true;
-    myroot->insert_char(c);
-    return;
-}
-
-void notebook::key_ctrl_char(char16_t c)
-{
-    boxbase* b = nullptr;
-    if (c == 'v')
-    {
-        key_paste();
-    }
-    else if (c == 'c')
-    {
-        key_copy();
-    }
-    else if (c == 'r')
-    {
-        myroot->insert(b, insertarg_Rotation);
-    }
-    else if (c == 't')
-    {
-        myroot->insert(b, insertarg_Text);
-    }
-    else if (c == 'g')
-    {
-        myroot->insert(b, insertarg_Graphics3D);
-    }
-    assert(b == nullptr);
-}
-
-
-void notebook::key_makecell(cellType c)
-{
-    cursor_needs_fitting = true;
-
-    if (myroot->cursor_b > myroot->childcells.size())
-    {
-        myroot->childcells[myroot->cursor_a].cbox->celltype = c;
-    }
-    else
-    {
-        myroot->delete_selection();
-
-        rowbox * row = new rowbox(c == cellt_TITLE         ? "Title" :
-                                  c == cellt_SECTION       ? "Section" :
-                                  c == cellt_SUBSECTION    ? "Subsection" :
-                                  c == cellt_SUBSUBSECTION ? "Subsubsection" :
-                                  c == cellt_BOLDTEXT      ? "BoldText" :
-                                  c == cellt_TEXT          ? "Text" :
-                                  c == cellt_MESSAGE       ? "Message" :
-                                  c == cellt_PRINT         ? "Print" :
-                                  c == cellt_OUTPUT        ? "Output" :
-                                                             "Input");
-
-        cellbox * newcell = new cellbox(row, c);
-
-        assert(myroot->cursor_a <= myroot->childcells.size());
-        myroot->childcells.insert(myroot->childcells.begin() + myroot->cursor_a, cellboxarrayelem());
-        myroot->childcells[myroot->cursor_a].cbox = newcell;
-        myroot->cursor_b = myroot->childcells.size() + 1;
-        return;
-    }
-}
-
-
-void notebook::insert_newline()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Newline);
-    assert(b == nullptr);
-    return;
-}
-
-void notebook::key_tab()
-{
-    cursor_needs_fitting = true;
-    myroot->insert_char('\t');
-    return;
-}
-
-
-
-void notebook::insert_sqrt()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Sqrt);
-    assert(b == nullptr);
-    return;
-}
-
-
-
-void notebook::insert_subscript()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Subscript);
-    assert(b == nullptr);
-    return;
-}
-
-
-
-void notebook::insert_superscript()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Superscript);
-    assert(b == nullptr);
-    return;
-}
-
-
-bool notebook::we_are_legal() {return !(btype(_us()) == BNTYPE_ROW || btype(_us()) == BNTYPE_CELLGROUP || btype(_us()) == BNTYPE_ROOT);}
-
-void notebook::key_switch()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->move(b, movearg_Switch);
-    assert(b == nullptr);
-    return;
-}
-
-
-
-void notebook::insert_fraction()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Fraction);
-    assert(b == nullptr);
-    return;
-}
-
-void notebook::insert_underscript()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Underscript);
-    assert(b == nullptr);
-    return;
-}
-
-
-void notebook::insert_overscript()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->insert(b, insertarg_Overscript);
-    assert(b == nullptr);
-    return;
-}
-
-
-
-void notebook::insert_gridrow()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-
-    if (we_at_cellbreak())
-    {
-        box newcell = boxnode_make(BNTYPE_CELL, boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-        bto_node(newcell)->extra0 = CELLTYPE_INPUT;
-        cell_insert(newcell);
-        _down2(0, 1);
-        selection.type = SELTYPE_ROW;
-        selection.data.resize(1);
-        selection.data[0] = 0;
-    }
-
-    /* insert into ROW */
-    assert(bnode_type(_parent()) == BNTYPE_ROW);
-
-    /* if we are in a grid with (no selection or selected placeholder), add a row below */
-    if ((selection.type == SELTYPE_NONE || placeholder_selected()) && has_ancester(BNTYPE_GRID))
-    {
-        while (bnode_type(_parent()) != BNTYPE_GRID)
-        {
-            _up1();
-        }
-        selection.type = SELTYPE_NONE;
-        boxnode * parent = bto_node(_parent());
-        int pi = _pi();
-        int posx = pi % parent->extra0;
-        int posy = pi / parent->extra0;
-        _up1();
-        _insert_gridrow(posy+1);
-        _down2((posy+1)*parent->extra0 + 0, 1);
-        select_placeholder_if_needed();
-    }
-    else
-    {
-        /* attempt to get a selection if none exists */
-        select_prev_if_possible();
-
-        if (selection.type == SELTYPE_NONE)
-        {
-            box newgrid = boxnode_make(BNTYPE_GRID, 
-                                        boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)),
-                                        boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-            bto_node(newgrid)->extra0 = 1;
-            bto_node(newgrid)->extra1 = 2;
-            _insert(newgrid);
-            _down2(1, 1);
-            select_placeholder_if_needed();
-        }
-        else if (selection.type == SELTYPE_ROW)
-        {
-            box newrow = _splitrange_row(selection.data[0]);
-            box newgrid = boxnode_make(BNTYPE_GRID, newrow, boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-            bto_node(newgrid)->extra0 = 1;
-            bto_node(newgrid)->extra1 = 2;
-            _insert(newgrid);
-            _down2(1, 1);
-            select_placeholder_if_needed();
-        }
-        else
-        {
-            /* do nothing */
-        }
-        selection.type = SELTYPE_NONE;
-    }
-    return;
-}
-
-
-
-
-void notebook::insert_gridcol()
-{
-    assert(we_are_legal());
-    cursor_needs_fitting = true;
-
-    if (we_at_cellbreak())
-    {
-        box newcell = boxnode_make(BNTYPE_CELL, boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-        bto_node(newcell)->extra0 = CELLTYPE_INPUT;
-        cell_insert(newcell);
-        _down2(0, 1);
-        selection.type = SELTYPE_ROW;
-        selection.data.resize(1);
-        selection.data[0] = 0;
-    }
-
-    /* insert into ROW */
-    assert(bnode_type(_parent()) == BNTYPE_ROW);
-
-    /* if we are in a grid with (no selection or selected placeholder), add a row below */
-    if ((selection.type == SELTYPE_NONE || placeholder_selected()) && has_ancester(BNTYPE_GRID))
-    {
-        while (bnode_type(_parent()) != BNTYPE_GRID)
-        {
-            _up1();
-        }
-        selection.type = SELTYPE_NONE;
-        boxnode * parent = bto_node(_parent());
-        int pi = _pi();
-        int posx = pi % parent->extra0;
-        int posy = pi / parent->extra0;
-        _up1();
-        _insert_gridcol(posx + 1);
-        _down2((0)*parent->extra0 + posx + 1, 1);
-        select_placeholder_if_needed();
-    }
-    else
-    {
-        /* attempt to get a selection if none exists */
-        select_prev_if_possible();
-        if (selection.type == SELTYPE_NONE)
-        {
-            box newgrid = boxnode_make(BNTYPE_GRID,
-                                    boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)),
-                                    boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-            bto_node(newgrid)->extra0 = 2;
-            bto_node(newgrid)->extra1 = 1;
-            _insert(newgrid);
-            _down2(1, 1);
-            select_placeholder_if_needed();
-        }
-        else if (selection.type == SELTYPE_ROW)
-        {
-            selection.type = SELTYPE_NONE;
-            box newrow = _splitrange_row(selection.data[0]);
-            box newgrid = boxnode_make(BNTYPE_GRID, newrow, boxnode_make(BNTYPE_ROW, boxchar_create(CHAR_Placeholder), bfrom_ptr(&box_null)));
-            bto_node(newgrid)->extra0 = 2;
-            bto_node(newgrid)->extra1 = 1;
-            _insert(newgrid);
-            _down2(1, 1);
-            select_placeholder_if_needed();
-        }
-        else
-        {
-            selection.type = SELTYPE_NONE;
-        }
-    }
-    return;
-}
-
+#if 0
 /* remove all children from us after and including s */
 void notebook::_cell_remove_sels(boxnode * r, std::vector<int>&s, size_t i)
 {
@@ -2276,24 +1313,7 @@ void notebook::handle_empty_row(int dir)
 }
 
 
-void notebook::key_backspace()
-{
-    cursor_needs_fitting = true;
-    boxbase * b = nullptr;
-    myroot->remove(b, removearg_Left);
-    assert(b == nullptr);
-    return;
-}
 
-
-void notebook::key_delete()
-{
-    cursor_needs_fitting = true;
-    boxbase* b = nullptr;
-    myroot->remove(b, removearg_Right);
-    assert(b == nullptr);
-    return;
-}
 
 
 
@@ -2374,8 +1394,8 @@ void _cell_copy_selection(box buf, box us, std::vector<int>&s, std::vector<int>&
 }
 
 
-void notebook::key_copy() {
-
+void notebook::key_copy()
+{
     if (selection.type == SELTYPE_NONE)
     {
         return;
@@ -2463,11 +1483,11 @@ void notebook::key_paste()
     {
         if (s[j] >= ' ')
         {
-            myroot->insert_char(s[j]);
+            root->insert_char(s[j]);
         }
         else if (s[j] == '\n')
         {
-            myroot->insert(b, insertarg_Newline);
+            root->insert(b, insertarg_Newline);
         }
     }
 
@@ -2889,19 +1909,11 @@ try_again:
     }
     _invalidate_downto(0);
 }
-
+#endif
 
 //extern HANDLE hPipeG2K;
 
-void notebook::key_shiftenter()
-{
-    cursor_needs_fitting = true;
-    myroot->key_shiftenter(this);
-    return;
-}
-
-
-
+#if 0
 boxnode * _find_cell_mark(boxnode * b, std::vector<int32_t>& v)
 {
     int32_t len = boxnode_len(b);
@@ -2917,7 +1929,7 @@ boxnode * _find_cell_mark(boxnode * b, std::vector<int32_t>& v)
         v.push_back(i);
         if (boxnode_type(c) == BNTYPE_CELL)
         {
-            if (boxnode_extra1(c) & BNFLAG_MARKED)
+            if (boxnode_extra1(c) & BNFLAG_PRINTMARK)
             {
                 return c;
             }
@@ -2942,37 +1954,120 @@ void notebook::erase_cell_mark()
     boxnode * r = _find_cell_mark(root, v);
     if (r != nullptr)
     {
-        r->extra1 &= ~BNFLAG_MARKED;
+        r->extra1 &= ~BNFLAG_PRINTMARK;
+    }
+}
+#endif
+
+bool _find_mark(boxbase * b, std::vector<int32_t>& v, uint32_t mask)
+{
+    for (int32_t i = 0; i < childlen(b); i++)
+    {
+        boxbase* c = childat(b, i);
+        v.push_back(i);
+        if (c->get_type() == BNTYPE_CELL)
+        {
+            if (dynamic_cast<cellbox*>(c)->flags & mask)
+                return true;
+        }
+        else
+        {
+            if (_find_mark(c, v, mask))
+                return true;
+        }
+        v.pop_back();
+    }
+    return false;
+}
+
+
+void rootbox::erase_cell_mark(uint32_t mask)
+{
+    cursor_t.clear();
+    if (_find_mark(this, cursor_t, mask))
+    {
+        dynamic_cast<cellbox*>(_us())->flags &= ~mask;
+    }
+}
+
+
+void rootbox::print_cell(cellbox* c)
+{
+    bool find_a = false;
+    bool find_b = false;
+
+    if (cursor_a[0] < child.size())
+    {
+        cursor_t = cursor_a;
+        dynamic_cast<cellbox*>(_us())->flags |= BNFLAG_CURSORAMARK;
+        find_a = true;
+    }
+
+    if (!cursor_b.empty() && cursor_b[0] < child.size())
+    {
+        cursor_t = cursor_b;
+        dynamic_cast<cellbox*>(_us())->flags |= BNFLAG_CURSORBMARK;
+        find_b = true;
+    }
+
+    cursor_t.clear();
+    bool found = _find_mark(this, cursor_t, BNFLAG_PRINTMARK);
+
+    if (!found)
+    {
+        cursor_t.clear();
+        cursor_t.push_back(child.size());
+    }
+    else
+    {
+        dynamic_cast<cellbox*>(_us())->flags &= ~BNFLAG_PRINTMARK;
+        goto_next_cellbreak();
+    }
+
+    c->flags |= BNFLAG_PRINTMARK;
+    cell_insert(c);
+
+    if (find_a)
+    {
+        cursor_t.clear();
+        found = _find_mark(this, cursor_t, BNFLAG_CURSORAMARK);
+        assert(found);
+        dynamic_cast<cellbox*>(_us())->flags &= ~BNFLAG_CURSORAMARK;
+        cursor_a = cursor_t;
+    }
+    else
+    {
+        cursor_a.clear();
+        cursor_a.push_back(child.size());
+    }
+
+    if (find_b)
+    {
+        cursor_t.clear();
+        found = _find_mark(this, cursor_t, BNFLAG_CURSORBMARK);
+        assert(found);
+        dynamic_cast<cellbox*>(_us())->flags &= ~BNFLAG_CURSORBMARK;
+        cursor_b = cursor_t;
+    }
+    else if (!cursor_b.empty())
+    {
+        cursor_b.clear();
+        cursor_b.push_back(child.size());
     }
 }
 
 
 void notebook::print_cell(cellbox* c)
 {
-    print_location = std::min(print_location, int32_t(myroot->childcells.size()));
-
-    if (myroot->cursor_b > myroot->childcells.size())
-    {
-        myroot->childcells.insert(myroot->childcells.begin() + print_location, cellboxarrayelem());
-        myroot->childcells[print_location].cbox = c;
-        myroot->cursor_b = myroot->childcells.size() + 1;
-    }
-    else
-    {
-        myroot->childcells.insert(myroot->childcells.begin() + print_location, cellboxarrayelem());
-        myroot->childcells[print_location].cbox = c;
-        myroot->cursor_b += print_location <= myroot->cursor_b;
-    }
-    myroot->cursor_a += print_location <= myroot->cursor_a;
-    print_location++;
-    return;
-
+    root->print_cell(c);
+    cursor_needs_fitting = true;
 }
 
+#if 0
 void notebook::print_cell(box c)
 {
     assert(bnode_type(c) == BNTYPE_CELL);
-    bto_node(c)->extra1 &= ~BNFLAG_MARKED;
+    bto_node(c)->extra1 &= ~BNFLAG_PRINTMARK;
 
 //std::cout << "********print_cell called******" << std::endl;
 
@@ -2988,7 +2083,7 @@ void notebook::print_cell(box c)
     }
     else
     {
-        r->extra1 &= ~BNFLAG_MARKED;
+        r->extra1 &= ~BNFLAG_PRINTMARK;
         if (bis_node(_us()) && bto_node(_us()) == r)
         {
 //std::cout << "case 1" << std::endl;
@@ -3000,7 +2095,7 @@ void notebook::print_cell(box c)
             cell_insert(c);
             _invalidate_downto(0);
             goto_next_cellbreak();
-            bto_node(c)->extra1 |= BNFLAG_MARKED;
+            bto_node(c)->extra1 |= BNFLAG_PRINTMARK;
 //std::cout << "********print_cell returning******" << std::endl;
             return;
         }
@@ -3017,7 +2112,7 @@ void notebook::print_cell(box c)
             cell_insert(c);
             _invalidate_downto(0);
             goto_last_cellbreak();
-            bto_node(c)->extra1 |= BNFLAG_MARKED;
+            bto_node(c)->extra1 |= BNFLAG_PRINTMARK;
 //std::cout << "********print_cell returning******" << std::endl;
             return;
         }
@@ -3045,7 +2140,7 @@ void notebook::print_cell(box c)
             }
             /* mark cursor cell */
             assert(bnode_type(_us()) == BNTYPE_CELL);
-            bto_node(_us())->extra1 |= BNFLAG_MARKED;
+            bto_node(_us())->extra1 |= BNFLAG_PRINTMARK;
 
 //std::cout << "case 3 here" << std::endl;
             /* go down to originally marked cell and put c after */
@@ -3063,7 +2158,7 @@ void notebook::print_cell(box c)
             marked_cell_position.clear();
             r = _find_cell_mark(root, marked_cell_position);
             assert(r != nullptr); // r should be the cell the cursor was in
-            r->extra1 &= ~BNFLAG_MARKED;
+            r->extra1 &= ~BNFLAG_PRINTMARK;
 
             cursor1.resize(1);
             for (size_t i = 0; i < marked_cell_position.size(); i++)
@@ -3076,9 +2171,10 @@ void notebook::print_cell(box c)
                 position_in_cur_cell.pop();
             }
 
-            bto_node(c)->extra1 |= BNFLAG_MARKED;
+            bto_node(c)->extra1 |= BNFLAG_PRINTMARK;
 //std::cout << "********print_cell returning******" << std::endl;
             return;
         }
     }
 }
+#endif

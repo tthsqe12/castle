@@ -52,7 +52,8 @@ void swrite_ulong(FILE * fp, ulong a)
     fwrite(buffer, 1, len, fp);
 }
 
-int sread_ulong(FILE * fp, ulong &a) {
+int sread_ulong(FILE * fp, ulong &a)
+{
     uint8_t c, buffer[8];
     size_t frs;
     if (1 != fread(buffer, 1, 1, fp)) {return 1;}
@@ -81,7 +82,7 @@ int sread_slong(FILE * fp, slong &a)
 {
     ulong b;
     if (sread_ulong(fp, b)) {return 1;}
-    a = (b & 1) ? -1-(b/2) : b/2;
+    a = (b & 1) ? -1 - (b/2) : b/2;
     return 0;
 }
 
@@ -134,9 +135,9 @@ int sread_fmpz(FILE * fp, fmpz_t f)
     return 0;
 }
 
-void swrite_arb(FILE * fp, xarb &x)
+void swrite_arb(FILE * fp, xarb_t &x)
 {
-    xfmpz a, b, c, d;
+    xfmpz_t a, b, c, d;
     x.get_abcd(a, b, c, d);
     swrite_fmpz(fp, a.data);
     swrite_fmpz(fp, b.data);
@@ -144,9 +145,9 @@ void swrite_arb(FILE * fp, xarb &x)
     swrite_fmpz(fp, d.data);
 }
 
-int sread_arb(FILE * fp, xarb &x)
+int sread_arb(FILE * fp, xarb_t &x)
 {
-    xfmpz a, b, c, d;
+    xfmpz_t a, b, c, d;
     if (sread_fmpz(fp, a.data)) {return 1;}
     if (sread_fmpz(fp, b.data)) {return 1;}
     if (sread_fmpz(fp, c.data)) {return 1;}
@@ -322,14 +323,14 @@ int sread_ex(FILE * fp, uex &e)
         {
             case ETYPE_INT:
             {
-                xfmpz x;
+                xfmpz_t x;
                 if (sread_fmpz(fp, x.data)) {return 1;}
                 v.push_back(uex(emake_int_move(x)));
                 break;
             }
             case ETYPE_RAT:
             {
-                xfmpq x;
+                xfmpq_t x;
                 if (sread_fmpq(fp, x.data)) {return 1;}
                 v.push_back(uex(emake_rat_move(x)));
                 break;
@@ -343,7 +344,7 @@ int sread_ex(FILE * fp, uex &e)
             }
             case ETYPE_REAL:
             {
-                xarb x;
+                xarb_t x;
                 if (sread_arb(fp, x)) {return 1;}
                 v.push_back(uex(emake_real_move(x)));
                 break;
@@ -414,7 +415,7 @@ int sread_ex(FILE * fp, uex &e)
                 if (sread_ulong(fp, name)) {return 1;}
                 if (cntx >= v.size() | name >= v.size()) {return 1;}
                 if (!eis_str(v[cntx].get()) || !eis_str(v[name].get())) {return 1;}
-                gs.live_contexts.insert(uex(v[cntx].copy()));
+                gs.live_contexts.insert(uex(v[cntx].copy())); // TODO temp dummy locations
                 auto ret = gs.live_symbols.insert(uex(emake_sym(v[cntx].copy(), v[name].copy())));
                 v.push_back(uex((*ret.first).copy()));
                 break;

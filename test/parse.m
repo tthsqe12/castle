@@ -6,16 +6,24 @@ parsetop[x_] := Quiet[ToExpression[x, InputForm, Hold]];
 (* parse with newlines as possible multiplications *)
 parse[x_] := Quiet[ToExpression[x, StandardForm, Hold]];
 
+Print["... bang"];
+
 Assert[parse["a+b!"] === Hold[a + Factorial[b]]];
 Assert[parse["a+b!!"] === Hold[a + Factorial2[b]]];
 Assert[parse["a+b! !"] === Hold[a + Factorial[Factorial[b]]]];
 Assert[parse["a!=b"] === Hold[Unequal[a, b]]];
 Assert[parse["a!!=b"] === Hold[Set[Factorial2[a], b]]];
 
+
+Print["... newline"];
+
 Assert[parse["a+b
               c+d"] === Hold[a + b*c + d]];
 Assert[parsetop["a+b
                  c+d"] === Hold[a + b, c + d]];
+
+
+Print["... dot"];
 
 Assert[parse["a.b"] === Hold[Dot[a, b]]];
 Assert[parse["a.1"] === Hold[Times[a, 0.1]]];

@@ -114,9 +114,11 @@ void errorbox::get_cursor(aftransform * T)
 
 void errorbox::measure(boxmeasurearg ma)
 {
+    sizex = 60;
+    sizey = 60;
+    centery = 30;
     return;
 }
-
 
 
 void errorbox::draw_pre(boxdrawarg da)
@@ -126,6 +128,8 @@ void errorbox::draw_pre(boxdrawarg da)
 
 void errorbox::draw_main(boxdrawarg da)
 {
+    drawtrect(da.globx, da.globx + sizex,
+              da.globy, da.globy + sizey, RGB_COLOR(0xFF,0xA0,0xD0), da.T);
     return;
 }
 

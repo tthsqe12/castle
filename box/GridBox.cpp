@@ -233,7 +233,7 @@ ex gridbox::get_ex()
             r.push_back(j->cbox->get_ex());
         m.push_back(r.release());
     }
-    return m.release();
+    return emake_node(gs.sym_sGridBox.copy(), m.release());
 }
 
 
@@ -256,7 +256,7 @@ void gridbox::measure(boxmeasurearg ma)
     {
         for (size_t i = 0; i < array[j].size(); i++)
         {
-            array[j][i].cbox->measure(boxmeasurearg(fontint_smaller(ma.fi,1), ma.deswidth, ma.mflags, ma.level + 1));
+            array[j][i].cbox->measure(boxmeasurearg(fontint_smaller(ma.fi,1), 4*ma.deswidth, ma.mflags, ma.level + 1));
             while (max_width.size() <= i)
                 max_width.push_back(0);
             max_width[i] = std::max(max_width[i], array[j][i].cbox->sizex);

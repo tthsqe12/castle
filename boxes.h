@@ -646,7 +646,7 @@ public:
     void draw_pre(boxdrawarg ma);
     void draw_main(boxdrawarg ma);
     void draw_post(boxdrawarg ma);
-    boxbase * copy() {assert(false); return nullptr;};
+    boxbase * copy();
     void key_copy(boxbase*&b) {assert(false);};
     void key_paste(boxbase*&b) {assert(false);};
     void set_scolor(bsymer* B) {assert(false);};
@@ -1091,7 +1091,7 @@ int64_t fxn_evals, grad_evals;
 
     graphics3dbox(er f, er f_x, er f_y, er f_z, double x_min, double x_max, double y_min, double y_max, double z_min, double z_max)
       : boxbase(BNTYPE_PLOT3D),
-        image(800, 800),
+        image(700, 700),
         fxn(ecopy(f)),
         fxn_x(ecopy(f_x)),
         fxn_y(ecopy(f_y)),
@@ -1162,4 +1162,4 @@ void drawtline(double X1, double Y1, double X2, double Y2, double e, uint32_t co
 void drawtlines(double * coords, size_t nlines, double e, uint32_t color, aftransform*T);
 void drawtchar(uint32_t fs, char16_t c, int32_t sizex, int32_t sizey, int32_t offx, int32_t offy, uint32_t color, aftransform * T);
 void drawbtchar(double blend, uint32_t fs, char16_t c, int32_t sizex, int32_t sizey, int32_t offx, int32_t offy, uint32_t color, aftransform * T);
-void _draw_cellgroup_bracket(boxbase * us, boxdrawarg da);
+void _draw_cellgroup_bracket(boxbase * us, boxdrawarg da, bool selected);

@@ -29,7 +29,7 @@
 #include "timing.h"
 #include "digits.h"
 #include "serialize.h"
-#include "dcode.h"
+#include "sudcode.h"
 
 
 std::vector<void*> exs_in_use;
@@ -41,13 +41,11 @@ FILE * fp_out, * fp_in;
 int fp_out_type;
 
 #include <windows.h>
-#define BUFSIZE 512
 
 int main(int argc, char *argv[]) 
 {
     HANDLE hPipeG2K, hPipeK2G; 
     LPTSTR lpvMessage=TEXT("Default message from client."); 
-    TCHAR  chBuf[BUFSIZE]; 
     BOOL   fSuccess = FALSE; 
     DWORD  cbRead, cbToWrite, cbWritten, dwMode; 
     LPTSTR lpszPipenameG2K = TEXT("\\\\.\\pipe\\G2Knamedpipe"); 
@@ -124,7 +122,7 @@ int main(int argc, char *argv[])
 
 
     gs.inc_$Line();
-    uex m(emake_node(gs.symsInputNamePacket.copy(), gs.in_prompt_standardform()));
+    uex m(emake_node(gs.sym_sInputNamePacket.copy(), gs.in_prompt_standardform()));
     swrite_byte(fp_out, CMD_EXPR);
     swrite_ex(fp_out, m.get());
     fflush(fp_out);
@@ -148,50 +146,47 @@ std::cout << "<kernel>: CMD_EXPR err: " << err << "  e: " << ex_tostring_full(e.
             {
                 std::cerr << "<!kernel>: could not read CMD_EXPR - error " << err << std::endl;
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsEnterExpressionPacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sEnterExpressionPacket.get(), 1))
             {
                 e.reset(e.copychild(1));
-std::cout << "<kernel>: received" << std::endl << ex_tostring_full(e.get()) << std::endl;
                 e.reset(topeval(e.release()));
-                e.reset(emake_node(gs.symsReturnExpressionPacket.copy(), e.release()));
+                e.reset(emake_node(gs.sym_sReturnExpressionPacket.copy(), e.release()));
                 swrite_byte(fp_out, CMD_EXPR);
                 swrite_ex(fp_out, e.get());
                 fflush(fp_out);
             }
-            else if (ehas_head_sym_length(e.get(), gs.symsEnterTextPacket.get(), 1))
+            else if (ehas_head_sym_length(e.get(), gs.sym_sEnterTextPacket.get(), 1))
             {
                 e.reset(e.copychild(1));
-                int serror = 0;
-                std::vector<size_t> istack;
-                std::vector<uex> vin;
-                ex_parse_exbox(vin, e.get(), serror, istack);
-                if (serror)
+                std::vector<uex> v;
+                syntax_report sr;
+                ex_parse_exboxs(v, e.get(), true, sr);
+                if (sr.have_error())
                 {
-		            _gen_message(gs.symsGeneral.get(), "sntx", "Syntax error near `1`.", emake_str("???"));
+		            _gen_message(gs.sym_sGeneral.get(), "sntx", "`1` near `2`.", sr.translate_error(), sr.near_error());
                     continue;
                 }
-std::cout << "<kernel>: parsed as " << exvec_tostring_full(vin) << std::endl;
-                for (size_t i = 0; i < vin.size(); i++)
+//std::cout << "<kernel>: parsed as " << exvec_tostring_full(v) << std::endl;
+                for (auto f = v.begin(); f != v.end(); ++f)
                 {
-                    uex v(topeval(vin[i].release()));
-std::cout << "<kernel>: after eval: " << ex_tostring_full(v.get()) << std::endl;
-                    esym_assign_dvalue(gs.symsOut.get(), emake_node(gs.symsOut.copy(), ecopy(gs.get_$Line())), v.copy());
-                    if (!eis_sym(v.get(), gs.symsNull.get()))
+                    esym_assign_dvalue(gs.sym_sIn.get(), emake_node(gs.sym_sIn.copy(), ecopy(gs.get_$Line())), f->copy());
+                    f->set(topeval(f->release()));
+                    esym_assign_dvalue(gs.sym_sOut.get(), emake_node(gs.sym_sOut.copy(), ecopy(gs.get_$Line())), f->copy());
+                    if (!eis_sym(f->get(), gs.sym_sNull.get()))
                     {
-                        m.reset(emake_node(gs.symsOutputNamePacket.copy(), gs.out_prompt_standardform()));
+                        m.reset(emake_node(gs.sym_sOutputNamePacket.copy(), gs.out_prompt_standardform()));
                         swrite_byte(fp_out, CMD_EXPR);
                         swrite_ex(fp_out, m.get());
                         fflush(fp_out);
-
-                        v.reset(ex_to_exbox_standard(v.get()));
-                        v.reset(emake_node(gs.symsReturnTextPacket.copy(), v.release()));
+                        f->setnz(ex_to_exbox_standard(f->get()));
+                        f->set(emake_node(gs.sym_sReturnTextPacket.copy(), f->release()));
                         swrite_byte(fp_out, CMD_EXPR);
-                        swrite_ex(fp_out, v.get());
+                        swrite_ex(fp_out, f->get());
                         fflush(fp_out);
                     }
                     gs.inc_$Line();
                 }
-                m.reset(emake_node(gs.symsInputNamePacket.copy(), gs.in_prompt_standardform()));
+                m.reset(emake_node(gs.sym_sInputNamePacket.copy(), gs.in_prompt_standardform()));
                 swrite_byte(fp_out, CMD_EXPR);
                 swrite_ex(fp_out, m.get());
                 fflush(fp_out);

@@ -157,13 +157,13 @@ grad_evals++;
 //    g->y = -1.0*(1 + 2*tt)*y*(-1 + x*x + y*y + z*z) + 2*tt*tt*y*(tt*tt*x*x - y*y)*(-x*x + tt*tt*z*z) - 2*y*(tt*tt*y*y - z*z)*(-x*x + tt*tt*z*z);
 //    g->z = -1.0*(1 + 2*tt)*z*(-1 + x*x + y*y + z*z) + 2*tt*tt*(tt*tt*x*x - y*y)*z*(tt*tt*y*y - z*z) - 2*(tt*tt*x*x - y*y)*z*(-x*x + tt*tt*z*z);
 
-    g->x = 6*x*(x*x+y*y)*(x*x+y*y) - 2*x*y*y*(4*z*z+1);
-    g->y = 6*y*(x*x+y*y)*(x*x+y*y) - 2*x*x*y*(4*z*z+1);
-    g->z = -8*x*x*y*y*z;
+//    g->x = 6*x*(x*x+y*y)*(x*x+y*y) - 2*x*y*y*(4*z*z+1);
+//    g->y = 6*y*(x*x+y*y)*(x*x+y*y) - 2*x*x*y*(4*z*z+1);
+//    g->z = -8*x*x*y*y*z;
 
-//    g->x = 4*x*x*x-2*x;
-//    g->y = 4*y*y*y-2*y;
-//    g->z = 4*z*z*z-2*z;
+    g->x = 4*x*x*x-2*x;
+    g->y = 4*y*y*y-2*y;
+    g->z = 4*z*z*z-2*z;
 
 //    uex r(eval(emake_node(fxn_x.copy(), emake_double(x), emake_double(y), emake_double(z))));
 //    g->x = econvert_todouble(r.get());
@@ -210,9 +210,9 @@ fxn_evals++;
 
 //    return (tt*tt*x*x - y*y)*(tt*tt*y*y - z*z)*(tt*tt*z*z - x*x) - 0.25*(1+2*tt)*(x*x + y*y + z*z - 1)*(x*x + y*y + z*z - 1);
 
-    return (x*x+y*y)*(x*x+y*y)*(x*x+y*y) - (x*x)*(y*y)*(4*z*z+1);
+//    return (x*x+y*y)*(x*x+y*y)*(x*x+y*y) - (x*x)*(y*y)*(4*z*z+1);
 
-//    return (x*x)*(x*x) + (y*y)*(y*y) + (z*z)*(z*z) - x*x - y*y - z*z + 0.5;
+    return (x*x)*(x*x) + (y*y)*(y*y) + (z*z)*(z*z) - x*x - y*y - z*z + 0.5;
 
 //    uex r(eval(emake_node(fxn.copy(), emake_double(x), emake_double(y), emake_double(z))));
 //    return econvert_todouble(r.get());
@@ -571,7 +571,7 @@ if (!(j == 100 && (260 == i)))
         // ambient occulusion
         N.normalize();
         double ao = 1;
-        if (true)
+        if (false)
         {
             vec3<double> A, B;
             double nxy = N.x*N.x + N.y*N.y;

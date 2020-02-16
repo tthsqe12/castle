@@ -97,9 +97,9 @@ void eparser::try_newexpr()
 
     std::vector<wex> stack_save(estack);
     uex prevTk_save, currTk_save, nextTk_save;
-    if (prevTk.get() != nullptr) prevTk_save.set(prevTk.copy());
-    if (currTk.get() != nullptr) currTk_save.set(currTk.copy());
-    if (nextTk.get() != nullptr) nextTk_save.set(nextTk.copy());
+    prevTk_save.set(prevTk.copynull());
+    currTk_save.set(currTk.copynull());
+    nextTk_save.set(nextTk.copynull());
 
     handle_token_raw(opEnd);
     popop(prec_lowest);
@@ -108,9 +108,9 @@ void eparser::try_newexpr()
     {
         out.push_back(uex(estack.back().copy()));
         estack.pop_back();
-        prevTk.release();
-        currTk.release();
-        nextTk.release();
+        prevTk.reset(nullptr);
+        currTk.reset(nullptr);
+        nextTk.reset(nullptr);
     }
     else
     {
@@ -262,7 +262,7 @@ void tokenize_start(eparser&p, int32_t c)
             }
             else if (c == CHAR_Integral)
             {
-                ex t = emake_node(gs.symsIntegrate.copy(), gs.symsNull.copy(), gs.symsNull.copy());
+                ex t = emake_node(gs.sym_sIntegrate.copy(), gs.sym_sNull.copy(), gs.sym_sNull.copy());
                 p.handle_token_ex(emake_raw(op_pre_Integrate, 0, t));
                 return;
             }
@@ -295,7 +295,7 @@ void tokenize_start(eparser&p, int32_t c)
     {
         assert(p.pattern_name.get() == nullptr);
         assert(p.blank_type.get() == nullptr);
-        p.blank_type.reset(gs.symsBlank.copy());
+        p.blank_type.reset(gs.sym_sBlank.copy());
         p.stage = &tokenize_blank_1;
         return;
     }
@@ -1013,7 +1013,7 @@ void tokenize_percent_start(eparser&p, int32_t c)
     }
     else
     {
-        p.handle_token_ex(emake_node(gs.symsOut.copy()));
+        p.handle_token_ex(emake_node(gs.sym_sOut.copy()));
         tokenize_start(p, c);
         return;        
     }
@@ -1030,7 +1030,7 @@ void tokenize_percent_num(eparser&p, int32_t c)
     }
     else
     {
-        p.handle_token_ex(emake_node(gs.symsOut.copy(), emake_int_move(p.number)));
+        p.handle_token_ex(emake_node(gs.sym_sOut.copy(), emake_int_move(p.number)));
         tokenize_start(p, c);
         return;        
     }
@@ -1046,7 +1046,7 @@ void tokenize_percent_neg(eparser&p, int32_t c)
     }
     else
     {
-        p.handle_token_ex(emake_node(gs.symsOut.copy(), emake_int_si(-p.digits_after_dot)));
+        p.handle_token_ex(emake_node(gs.sym_sOut.copy(), emake_int_si(-p.digits_after_dot)));
         tokenize_start(p, c);
         return;        
     }
@@ -1687,7 +1687,7 @@ void tokenize_sym_start(eparser&p, int32_t c)
                 if (c == '_')
                 {
                     p.pattern_name.reset(u.release());
-                    p.blank_type.reset(ecopy(gs.symsBlank.get()));
+                    p.blank_type.reset(ecopy(gs.sym_sBlank.get()));
                     p.stage = &tokenize_blank_1;
                     return;
                 }
@@ -1701,7 +1701,7 @@ void tokenize_sym_start(eparser&p, int32_t c)
         {
             assert(p.blank_type.get() != nullptr);
             u.reset(emake_node(p.blank_type.release(), u.release()));
-            u.reset(emake_node(gs.symsPattern.copy(), p.pattern_name.release(), u.release()));
+            u.reset(emake_node(gs.sym_sPattern.copy(), p.pattern_name.release(), u.release()));
         }
         p.handle_token_ex(u.release());
 
@@ -1740,7 +1740,7 @@ void tokenize_blank_1(eparser&p, int32_t c)
     else if (c == '_')
     {
         p.stage = &tokenize_blank_2;
-        p.blank_type.reset(gs.symsBlankSequence.copy());
+        p.blank_type.reset(gs.sym_sBlankSequence.copy());
         return;
     }
     else if (c >= 0 && isletterchar(c))
@@ -1755,7 +1755,7 @@ void tokenize_blank_1(eparser&p, int32_t c)
         if (p.pattern_name.get() != nullptr)
         {
             p.blank_type.reset(emake_node(
-                        gs.symsPattern.copy(),
+                        gs.sym_sPattern.copy(),
                         p.pattern_name.release(),
                         p.blank_type.release()));
         }
@@ -1781,7 +1781,7 @@ void tokenize_blank_1_dot(eparser&p, int32_t c)
         {
             p.handle_token_ex(
                 emake_node(
-                    gs.symsPattern.copy(),
+                    gs.sym_sPattern.copy(),
                     p.pattern_name.release(),
                     emake_node(
                         p.blank_type.release()))
@@ -1796,7 +1796,7 @@ void tokenize_blank_1_dot(eparser&p, int32_t c)
         {
             p.handle_token_ex(
                 emake_node(
-                    gs.symsOptional.copy(),
+                    gs.sym_sOptional.copy(),
                     emake_node(
                         p.blank_type.release()))
             );
@@ -1805,9 +1805,9 @@ void tokenize_blank_1_dot(eparser&p, int32_t c)
         {
             p.handle_token_ex(
                 emake_node(
-                    gs.symsOptional.copy(),
+                    gs.sym_sOptional.copy(),
                     emake_node(
-                        gs.symsPattern.copy(),
+                        gs.sym_sPattern.copy(),
                         p.pattern_name.release(),
                         emake_node(
                             p.blank_type.release())))
@@ -1823,7 +1823,7 @@ void tokenize_blank_2(eparser&p, int32_t c)
 {
     if (c == '_')
     {
-        p.blank_type.reset(gs.symsBlankNullSequence.copy());
+        p.blank_type.reset(gs.sym_sBlankNullSequence.copy());
         p.stage = &tokenize_blank_3;
         return;
     }
@@ -1846,7 +1846,7 @@ void tokenize_blank_2(eparser&p, int32_t c)
         {
             p.handle_token_ex(
                 emake_node(
-                    gs.symsPattern.copy(),
+                    gs.sym_sPattern.copy(),
                     p.pattern_name.release(),
                     emake_node(
                         p.blank_type.release()))
@@ -1879,7 +1879,7 @@ void tokenize_blank_3(eparser&p, int32_t c)
         {
             p.handle_token_ex(
                 emake_node(
-                    gs.symsPattern.copy(),
+                    gs.sym_sPattern.copy(),
                     p.pattern_name.release(),
                     emake_node(
                         p.blank_type.release()))
@@ -1912,7 +1912,7 @@ void tokenize_slot_start(eparser&p, int32_t c)
     }
     else
     {
-        p.handle_token_ex(emake_node(gs.symsSlot.copy(), emake_cint(1)));
+        p.handle_token_ex(emake_node(gs.sym_sSlot.copy(), emake_cint(1)));
         tokenize_start(p, c);
         return;
     }
@@ -1931,7 +1931,7 @@ void tokenize_slot_1_digit(eparser&p, int32_t c)
     else
     {
         ex a1 = emake_int_move(p.number);
-        p.handle_token_ex(emake_node(gs.symsSlot.copy(), a1));
+        p.handle_token_ex(emake_node(gs.sym_sSlot.copy(), a1));
         tokenize_start(p, c);
         return;
     }
@@ -1948,7 +1948,7 @@ void tokenize_slot_1_alpha(eparser&p, int32_t c)
 	else
 	{
         ex a1 = emake_str_char16v(p.store);
-        p.handle_token_ex(emake_node(ecopy(gs.symsSlot.get()), a1));
+        p.handle_token_ex(emake_node(ecopy(gs.sym_sSlot.get()), a1));
         tokenize_start(p, c);
         return;
     }
@@ -1965,7 +1965,7 @@ void tokenize_slot_2(eparser&p, int32_t c)
     }
     else
     {
-        p.handle_token_ex(emake_node(gs.symsSlotSequence.copy(), emake_cint(1)));
+        p.handle_token_ex(emake_node(gs.sym_sSlotSequence.copy(), emake_cint(1)));
         tokenize_start(p, c);
         return;
     }
@@ -1983,7 +1983,7 @@ void tokenize_slot_2_digit(eparser&p, int32_t c)
     else
     {
         ex a1 = emake_int_move(p.number);
-        p.handle_token_ex(emake_node(ecopy(gs.symsSlotSequence.get()), a1));
+        p.handle_token_ex(emake_node(ecopy(gs.sym_sSlotSequence.get()), a1));
         tokenize_start(p, c);
         return;
     }

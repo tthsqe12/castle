@@ -31,7 +31,7 @@ visitRet cellbox::visit(visitArg m)
 
 boxbase * cellbox::copy()
 {
-    monobox* newmexpr = dynamic_cast<monobox*>(mexpr->copy());
+    monobox* newmexpr = mexpr == nullptr ? nullptr : dynamic_cast<monobox*>(mexpr->copy());
     rowbox* newbody = dynamic_cast<rowbox*>(body.cbox->copy());
 //    rowbox * newlabel = (label.cbox == nullptr) ? label.cbox : dynamic_cast<rowbox*>(label.cbox->copy());
     rowbox* newlabel = nullptr;
@@ -418,7 +418,7 @@ void cellbox::measure(boxmeasurearg ma)
     int32_t cellbracket_w = glb_dingbat.get_char_sizex(DINGBAT_CELLGEN, fontsize_size(fs));
     int32_t cellbracket_h = glb_dingbat.get_char_sizey(DINGBAT_CELLGEN, fontsize_size(fs));
 
-    body.cbox->measure(boxmeasurearg(fint, ma.deswidth - pad_left - pad_right - cellbracket_w*(ma.level + 1), dflag, ma.level + 1));
+    body.cbox->measure(boxmeasurearg(fint, ma.deswidth - pad_left - pad_right - cellbracket_w*(ma.level + 3), dflag, ma.level + 1));
 
     int32_t label_sizey = 0;
     bool label_on_left = false;
@@ -485,7 +485,7 @@ void cellbox::draw_pre(boxdrawarg da)
 
 void cellbox::draw_main(boxdrawarg da)
 {
-    _draw_cellgroup_bracket(this, da);
+    _draw_cellgroup_bracket(this, da, false);
 
     if (mexpr != nullptr)
     {
