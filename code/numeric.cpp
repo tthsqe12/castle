@@ -508,47 +508,6 @@ at many thousands of digits:   ~10% faster,  ~25% faster than arb
 
 #define CONST_PI_SUM_SPLIT_CUTOFF 50
 
-// {p1, r1, q1} = {p1*q2 + r1*p2, r1*r2, q1*q2} / GCD[r1, q2]
-static void fold(
-    fmpz_t p1, ui_factor_t & r1, ui_factor_t & q1,
-    fmpz_t p2, ui_factor_t & r2, ui_factor_t & q2,
-    bool needr)
-{
-    xfmpz_t t, t1, t2;
-    ui_factor_t s;
-
-    ui_factor_remove_gcd(r1, q2);
-
-    ulong e1 = ui_factor_get_fmpz_2exp(t1.data, q2);
-    ulong e2 = ui_factor_get_fmpz_2exp(t2.data, r1);
-
-    if (e1 >= e2)
-    {
-        fmpz_mul(t.data, p1, t1.data);
-        fmpz_mul_2exp(t.data, t.data, e1 - e2);
-        fmpz_addmul(t.data, p2, t2.data);
-        fmpz_mul_2exp(t.data, t.data, e2);
-    }
-    else
-    {
-        fmpz_mul(t.data, p2, t2.data);
-        fmpz_mul_2exp(t.data, t.data, e2 - e1);
-        fmpz_addmul(t.data, p1, t1.data);
-        fmpz_mul_2exp(t.data, t.data, e1);
-    }
-    fmpz_swap(p1, t.data);
-
-    ui_factor_mul(s, q1, q2);
-    std::swap(q1, s);
-
-    if (needr)
-    {
-        ui_factor_mul(s, r1, r2);
-        std::swap(r1, s);
-    }
-}
-
-
 /*
     Set {p1, r1, q1} = sum of terms in start..stop inclusive.
     The factored number mult is 640320^3/24.
@@ -621,6 +580,47 @@ static void pi_sum_basecase(
     } while (++j <= stop);
 }
 
+
+// {p1, r1, q1} = {p1*q2 + r1*p2, r1*r2, q1*q2} / GCD[r1, q2]
+static void fold(
+    fmpz_t p1, ui_factor_t & r1, ui_factor_t & q1,
+    fmpz_t p2, ui_factor_t & r2, ui_factor_t & q2,
+    bool needr)
+{
+    xfmpz_t t, t1, t2;
+    ui_factor_t s;
+
+    ui_factor_remove_gcd(r1, q2);
+
+    ulong e1 = ui_factor_get_fmpz_2exp(t1.data, q2);
+    ulong e2 = ui_factor_get_fmpz_2exp(t2.data, r1);
+
+    if (e1 >= e2)
+    {
+        fmpz_mul(t.data, p1, t1.data);
+        fmpz_mul_2exp(t.data, t.data, e1 - e2);
+        fmpz_addmul(t.data, p2, t2.data);
+        fmpz_mul_2exp(t.data, t.data, e2);
+    }
+    else
+    {
+        fmpz_mul(t.data, p2, t2.data);
+        fmpz_mul_2exp(t.data, t.data, e2 - e1);
+        fmpz_addmul(t.data, p1, t1.data);
+        fmpz_mul_2exp(t.data, t.data, e1);
+    }
+    fmpz_swap(p1, t.data);
+
+    ui_factor_mul(s, q1, q2);
+    std::swap(q1, s);
+
+    if (needr)
+    {
+        ui_factor_mul(s, r1, r2);
+        std::swap(r1, s);
+    }
+}
+
 // Set {p, r, q} = sum of terms in start..stop inclusive.
 static void pi_sum_split(
     fmpz_t p, ui_factor_t & r, ui_factor_t & q,
@@ -631,22 +631,20 @@ static void pi_sum_split(
 
     assert(start <= stop);
 
-    ulong diff = stop - start + 1;
+    ulong diff = stop - start;
 
-    if (diff > CONST_PI_SUM_SPLIT_CUTOFF)
+    if (diff > 2*CONST_PI_SUM_SPLIT_CUTOFF)
+    {
+        ulong mid = diff/16*9 + start;
+        pi_sum_split(p1.data, r1, q1, mid + 1, stop, true, mult);
+        pi_sum_split(p, r, q, start, mid, true, mult);
+        fold(p, r, q, p1.data, r1, q1, needr);
+    }
+    else if (diff > CONST_PI_SUM_SPLIT_CUTOFF)
     {
         ulong mid = diff/2 + start;
-        if (diff > 2*CONST_PI_SUM_SPLIT_CUTOFF)
-        {
-            pi_sum_split(p, r, q, start, mid, true, mult);
-            pi_sum_split(p1.data, r1, q1, mid + 1, stop, true, mult);
-        }
-        else
-        {
-            pi_sum_basecase(p, r, q, start, mid, mult);
-            pi_sum_basecase(p1.data, r1, q1, mid + 1, stop, mult);
-        }
-
+        pi_sum_basecase(p, r, q, start, mid, mult);
+        pi_sum_basecase(p1.data, r1, q1, mid + 1, stop, mult);
         fold(p, r, q, p1.data, r1, q1, needr);
     }
     else
