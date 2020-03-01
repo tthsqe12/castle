@@ -18,6 +18,8 @@
 #include "flint/flint.h"
 
 
+std::string stdstring_tostring(ulong x);
+
 inline char* _int_print(char* s, uint64_t x) {
     uint64_t r = x%10;
     uint64_t q = x/10;
@@ -39,6 +41,12 @@ inline std::string stdstring_to_string(int a)
     std::string s(buffer);
     return s;
 }
+
+class exception_arithmetic {
+public:
+    int code;
+    exception_arithmetic(int code_) : code(code_) {}
+};
 
 class exception_exit: public std::exception {
 public:

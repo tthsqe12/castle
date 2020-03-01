@@ -1030,11 +1030,15 @@ public:
     size_t row_cursor, col_cursor;
     size_t row_cursor2, col_cursor2;
     std::vector<std::vector<rowboxarrayelem>> array;
+    wex dividers, alignment, spacings;
 
     gridbox(size_t nrows, size_t ncols, size_t row_cursor_, size_t col_cursor_)
      : boxbase(BNTYPE_GRID),
        row_cursor(row_cursor_), col_cursor(col_cursor_),
        row_cursor2(row_cursor_), col_cursor2(col_cursor_),
+       dividers(gs.sym_sNull.copy()),
+       alignment(gs.sym_sNull.copy()),
+       spacings(gs.sym_sNull.copy()),
        array(nrows, std::vector<rowboxarrayelem>(ncols, rowboxarrayelem(nullptr)))
     {
     }
@@ -1043,6 +1047,9 @@ public:
      : boxbase(BNTYPE_GRID),
        row_cursor(row_cursor_), col_cursor(col_cursor_),
        row_cursor2(row_cursor_), col_cursor2(col_cursor_),
+       dividers(gs.sym_sNull.copy()),
+       alignment(gs.sym_sNull.copy()),
+       spacings(gs.sym_sNull.copy()),
        array(array_)
     {
     }

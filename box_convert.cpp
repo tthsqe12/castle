@@ -113,7 +113,7 @@ boxbase * boxbase_from_ex(er e)
         {
             return new errorbox(e);
         }
-        
+
         er f = echild(e,1);
         if (!ehas_head_sym(f, gs.sym_sList.get()))
         {
@@ -168,22 +168,37 @@ boxbase * boxbase_from_ex(er e)
         rowbox* inside = rowbox_from_ex(echild(e,1));
         return new rotationbox(dynamic_cast<rowbox*>(inside), extra0, extra1);
     }
-    else if (ehas_head_sym_length(e, gs.sym_sGridBox.get(), 1))
+    else if (ehas_head_sym(e, gs.sym_sGridBox.get()))
     {
-        er f = echild(e,1);
-        if (!eis_matrix(f)
-            || elength(f) > (1<<15)
-            || elength(echild(f,1)) > (1<<15)
-            || elength(f)*elength(echild(f,1)) > (1<<20))
+//std::cout << "sym_sGridBox convert length: " << elength(e) << std::endl;
+
+        er f;
+        if (elength(e) < 1 ||
+            (f = echild(e,1), !eis_matrix(f)) ||
+            elength(f) > (1<<15) ||
+            elength(echild(f,1)) > (1<<15) ||
+            elength(f)*elength(echild(f,1)) > (1<<20))
         {
             return new errorbox(e);
         }
+
         gridbox * us = new gridbox(elength(f), elength(echild(f,1)), 0, 0);
-        for (size_t j=1; j<=elength(f); j++)
-        {
-            for (size_t i=1; i<=elength(echild(f,j)); i++)
-            {
+
+        for (ulong j=1; j<=elength(f); j++)
+            for (ulong i=1; i<=elength(echild(f,j)); i++)
                 us->array[j-1][i-1].cbox = rowbox_from_ex(echild(f,j,i));
+
+        for (ulong i = 1; i < elength(e); i++)
+        {
+            er ei = echild(e, i + 1);
+
+//std::cout << "processing option: " << ex_tostring(ei) << std::endl;
+
+            if (ehas_head_sym_length(ei, gs.sym_sRule.get(), 2))
+            {
+                er ei1 = echild(ei, 1);
+                if (eis_sym(ei1, gs.sym_sGridBoxAlignment.get()))
+                    us->alignment.reset(ecopychild(ei,2));
             }
         }
         return us;
@@ -348,7 +363,7 @@ boxbase * boxbase_from_ex(er e)
         {
             return new errorbox(e);
         }
-        
+
         er f = echild(e,1);
         if (!ehas_head_sym(f, gs.sym_sList.get()) || elength(f)<2)
         {

@@ -7,7 +7,6 @@
 #include "globalstate.h"
 #include "eval.h"
 
-
 ex eval_with_minus(ex E)
 {
     if (eis_leaf(E))

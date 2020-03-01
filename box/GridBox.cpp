@@ -225,15 +225,23 @@ removeRet gridbox::remove(boxbase*&b, removeArg m)
 
 ex gridbox::get_ex()
 {
-    uex m(gs.sym_sList.get(), array.size());
+    std::vector<uex> l;
+    l.push_back(uex(gs.sym_sList.get(), array.size()));
     for (auto i = array.begin(); i != array.end(); ++i)
     {
         uex r(gs.sym_sList.get(), i->size());
         for (auto j = i->begin(); j != i->end(); ++j)
             r.push_back(j->cbox->get_ex());
-        m.push_back(r.release());
+        l.back().push_back(r.release());
     }
-    return emake_node(gs.sym_sGridBox.copy(), m.release());
+
+    if (!eis_sym(alignment.get(), gs.sym_sNull.get()))
+    {
+        l.push_back(emake_node(gs.sym_sRule.copy(), gs.sym_sGridBoxAlignment.copy(),
+                                                    alignment.copy()));
+    }
+
+    return emake_node(gs.sym_sGridBox.copy(), l);
 }
 
 
@@ -248,12 +256,16 @@ void gridbox::measure(boxmeasurearg ma)
 {
     uint32_t fs = fontint_to_fontsize(ma.fi);
 
+    ulong row_count = array.size();
+    ulong col_count = 0;
+
     std::vector<int32_t> max_width, acc_width;
-    std::vector<int32_t> max_above(array.size(), 0);
-    std::vector<int32_t> max_below(array.size(), 0);
+    std::vector<int32_t> max_above(row_count, 0);
+    std::vector<int32_t> max_below(row_count, 0);
 
     for (size_t j = 0; j < array.size(); j++)
     {
+        col_count = std::max(col_count, array[j].size());
         for (size_t i = 0; i < array[j].size(); i++)
         {
             array[j][i].cbox->measure(boxmeasurearg(fontint_smaller(ma.fi,1), 4*ma.deswidth, ma.mflags, ma.level + 1));
@@ -264,6 +276,58 @@ void gridbox::measure(boxmeasurearg ma)
             max_below[j] = std::max(max_below[j], array[j][i].cbox->sizey - array[j][i].cbox->centery);
         }
     }
+
+    /* read alignment options */
+    std::vector<int32_t> row_option(row_count, 1);
+    std::vector<int32_t> col_option(col_count, 1);
+    er t = alignment.get();
+    if (ehas_head_sym(t, gs.sym_sList.get()))
+    {
+        for (ulong i = 0; i < elength(t); i++)
+        {
+            er ti = echild(t,i+1);
+            if (ehas_head_sym_length(ti, gs.sym_sRule.get(), 2))
+            {
+                er o = echild(ti,2);
+                if (eis_str(echild(ti,1), estr_string(gs.strColumns.get())))
+                {
+                    if (ehas_head_sym(o, gs.sym_sList.get()))
+                    {
+                        ulong h = 0;
+                        for (ulong j = 0; j < elength(o); j++)
+                        {
+                            if (h >= col_count)
+                                break;
+
+                            if (ehas_head_sym(echild(o,j+1), gs.sym_sList.get()))
+                            {
+                                for (ulong k = 0; ; k++)
+                                {
+                                    if (h >= col_count)
+                                        break;
+
+                                    if (k >= elength(echild(o,j+1)))
+                                        k -= elength(echild(o,j+1));
+                                    col_option[h++] = (eis_sym(echild(o,j+1,k+1), gs.sym_sLeft.get())) ? 0 :
+                                                      (eis_sym(echild(o,j+1,k+1), gs.sym_sRight.get())) ? 2 : 1;
+                                }
+                            }
+                            else
+                            {
+                                col_option[h++] = (eis_sym(echild(o,j+1), gs.sym_sLeft.get())) ? 0 :
+                                                  (eis_sym(echild(o,j+1), gs.sym_sRight.get())) ? 2 : 1;
+                            }
+                        }
+                    }
+                }
+                else if (eis_str(echild(ti,1), "Rows"))
+                {
+                    
+                }
+            }
+        }
+    }
+
 
     int32_t accx = (fs&65535)*GRID_EXTRAX1;
     for (int32_t i = 0; i < max_width.size(); i++)
@@ -278,7 +342,7 @@ void gridbox::measure(boxmeasurearg ma)
     {
         for (size_t i = 0; i < array[j].size(); i++)
         {
-            array[j][i].offx = acc_width[i] + (max_width[i] - array[j][i].cbox->sizex)/2;
+            array[j][i].offx = acc_width[i] + col_option[i]*(max_width[i] - array[j][i].cbox->sizex)/2;
             array[j][i].offy = accy + (max_above[j] - array[j][i].cbox->centery);
         }
         accy += max_above[j] + max_below[j] + int32_t((fs&65535)*GRID_EXTRAY2);

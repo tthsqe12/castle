@@ -44,6 +44,15 @@ inline bool IMUL(int64_t*a0, int64_t*a1, int64_t x, int64_t y) {
 }
 #endif
 
+inline bool mul_si_checked(slong & a, slong b, slong c)
+{
+	slong Ahi, Alo, A = b*c;
+	smul_ppmm(Ahi, Alo, b, c);
+	a = A;
+	return FLINT_SIGN_EXT(A) != Ahi;
+}
+
+
 inline bool IMUL(slong & a, slong c, slong b)
 {
 	slong Ahi, Alo, A = b*c;
@@ -72,13 +81,14 @@ inline volatile void DIV(uint64_t*q, uint64_t*r, uint64_t x0, uint64_t x1, uint6
             : "cc");
 }
 
-inline slong SAR(slong a, int b) {
-    return a>>b;
+inline uint64_t SAR(uint32_t a, int b) {
+    return ((int32_t)(a))>>b;
 }
 
-inline ulong SAR(ulong a, int b) {
-    return ((slong)(a))>>b;
+inline uint64_t SAR(uint64_t a, int b) {
+    return ((int64_t)(a))>>b;
 }
+
 
 
 /*********************** additions *******************************/
@@ -139,6 +149,36 @@ inline bool IADD(int64_t*a, int64_t x, int64_t y) {
 }
 #endif
 */
+
+inline bool add_si_checked(slong & a, slong b, slong c)
+{
+    bool overflowed = b > 0 && c > WORD_MAX - b || b < 0 && c < WORD_MIN - b;
+    a = b + c;
+    return overflowed;
+}
+
+inline bool add_ui_checked(ulong & a, ulong b, ulong c)
+{
+	ulong A = b + c;
+	a = A;
+	return A < b;
+}
+
+inline bool sub_si_checked(slong & a, slong b, slong c)
+{
+    bool overflowed = b < 0 && a < WORD_MIN - b || b > 0 && a > WORD_MAX - b;
+    a = b - c;
+    return overflowed;
+}
+
+inline bool sub_ui_checked(ulong & a, ulong b, ulong c)
+{
+    bool carried = b < c;
+    a = b - c;
+	return carried;
+}
+
+
 
 inline bool IADD(slong & a, slong b, slong c)
 {
