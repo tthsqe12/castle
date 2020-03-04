@@ -10,6 +10,7 @@
 #include "flint/arith.h"
 #include "flint/profiler.h"
 
+
 /********************* start factor integer stuff ****************************/
 
 #define UI_ARRAY_PRODUCT_SPLIT_CUTOFF 16
@@ -19,6 +20,9 @@ typedef struct {
   ulong pow;
   ulong nxt;
 } sieve_t;
+
+static ulong timer_basecase, timer_fold, timer_float;
+static ulong timer_fold_expand, timer_fold_fmpz, timer_fold_factor;
 
 static sieve_t *sieve;
 static long int sieve_size;
@@ -488,34 +492,362 @@ static void ui_factor_mul(ui_factor_t & z, const ui_factor_t & f, const ui_facto
 }
 
 
+/* f *= base */
+void ui_factor_push_ui(ui_factor_t & f, ulong base)
+{
+    assert(base < sieve_size);
+
+    ulong fi = f.length;
+    f.fit_length(fi + 16);
+    ui_base_pow_pair * fd = f.data.data();
+
+    if ((base % 2) == 0)
+    {
+        ulong e = 0;
+        do {
+            e += 1;
+            base /= 2;
+        } while ((base % 2) == 0);
+
+        fd[fi] = ui_base_pow_pair{ulong(2), e};
+        fi++;
+    }
+
+    for (base/=2; base>0; base = sieve[base].nxt)
+    {
+        fd[fi] = ui_base_pow_pair{sieve[base].fac, sieve[base].pow};
+        fi++;
+    }
+
+    f.length = fi;
+}
+
+void ui_factor_pow_inplace(ui_factor_t & f, ulong pow)
+{
+    ui_base_pow_pair * fd = f.data.data();
+    for (ulong fi = 0; fi < f.length; fi++)
+        fd[fi].pow *= pow;
+}
+
+void ui_factor_mul_inplace(ui_factor_t & f, const ui_factor_t g, ulong p)
+{
+    ui_base_pow_pair * fd = f.data.data();
+    const ui_base_pow_pair * gd = g.data.data();
+    ulong fn = f.length;
+    ulong gn = g.length;
+
+    ulong fi = 0;
+    for (ulong gi = 0; gi < gn; gi++)
+    {
+        while (true)
+        {
+            if (unlikely(fi >= fn))
+            {
+                f.fit_length(fi + gn - gi);
+                fd = f.data.data();
+                for ( ; gi < gn; gi++, fi++)
+                {
+                    fd[fi].base = gd[gi].base;
+                    fd[fi].pow = p*gd[gi].pow;
+                }
+                f.length = fi;
+                return;
+            }
+
+            if (fd[fi].base >= gd[gi].base)
+                break;
+
+            fi++;
+        }
+
+        if (unlikely(fd[fi].base > gd[gi].base))
+        {
+            f.data.insert(f.data.begin() + fi, ui_base_pow_pair{gd[gi].base, p*gd[gi].pow});
+            fd = f.data.data();
+            fn++;
+            fi++;
+            f.length = fn;
+        }
+        else
+        {
+            fd[fi].pow += p*gd[gi].pow;
+            fi++;
+        }
+    }
+}
+
+struct uipair_compare
+{
+    bool operator()(const ui_base_pow_pair & a, const ui_base_pow_pair & b) const
+    {
+        return a.base < b.base;
+    }
+};
+
+
+void ui_factor_sort_terms(ui_factor_t & f)
+{
+    std::sort(f.data.begin(), f.data.begin() + f.length, uipair_compare());
+}
+
+void ui_factor_combine_like_terms(ui_factor_t & f)
+{
+    ulong in;
+    slong out;
+    ui_base_pow_pair * fd = f.data.data();
+
+    out = -1;
+
+    for (in = 0; in < f.length; in++)
+    {
+        assert(slong(in) > out);
+
+        if (out >= 0 && fd[out].base == fd[in].base)
+        {
+            fd[out].pow += fd[in].pow;
+        }
+        else
+        {
+            out++;
+            fd[out].base = fd[in].base;
+            fd[out].pow = fd[in].pow;
+        }
+    }
+
+    out++;
+
+    f.length = out;
+}
+
+
+
+inline bool mul_ui_checked(ulong & a, ulong b, ulong c)
+{
+	ulong Ahi, Alo;
+	umul_ppmm(Ahi, Alo, b, c);
+	a = Alo;
+	return 0 != Ahi;
+}
+
+
+mp_size_t mpn_mul3_ui(mp_limb_t * d, mp_size_t n, mp_limb_t a1, mp_limb_t a2, mp_limb_t a3)
+{
+    mp_limb_t out, p2, p3;
+
+    if (mul_ui_checked(p2, a1, a2))
+    {
+        out = mpn_mul_1(d, d, n, a1);
+        d[n] = out;
+        n += (out != 0);
+        out = mpn_mul_1(d, d, n, a2);
+        d[n] = out;
+        n += (out != 0);
+        p3 = a3;
+    }
+    else if (mul_ui_checked(p3, p2, a3))
+    {
+        out = mpn_mul_1(d, d, n, p2);
+        d[n] = out;
+        n += (out != 0);
+        p3 = a3;
+    }
+    out = mpn_mul_1(d, d, n, p3);
+    d[n] = out;
+    n += (out != 0);
+    return n;
+}
+
 /**************************** start pi stuff *********************************/
 
-/* timings in ms
+/* timings in ms  (ratio against arb in parenthesis)
 
-     digits   | arb_const_pi | gmp-chudnov |        here |
-     ---------+--------------+-------------+-------------+
-      100000  |           46 |         42  |         39  |
-      200000  |           96 |         93  |         86  |
-      400000  |          225 |        216  |        183  |
-      800000  |          534 |        482  |        414  |
-at many thousands of digits:   ~10% faster,  ~25% faster than arb
-     1000000  |          708 |        642  |        540  |
-     2000000  |         1688 |       1533  |       1238  |
-     4000000  |         4098 |       3532  |       2865  |
-     8000000  |         9806 |       8396  |       6793  |
-      at millions of digits:   ~16% faster,  ~40% faster than arb
+     digits   | arb_const_pi | gmp-chudnovsky |        here   |
+     ---------+--------------+----------------+---------------+
+      100000  |           46 |      41 (1.12) |     37 (1.24) |
+      200000  |           96 |      95 (1.01) |     74 (1.29) |
+      400000  |          224 |     211 (1.06) |    158 (1.41) |
+      800000  |          536 |     480 (1.11) |    368 (1.45) |
+     1000000  |          716 |     647 (1.10) |    482 (1.48) |
+     2000000  |         1690 |    1501 (1.12) |   1132 (1.49) |
+     4000000  |         4092 |    3565 (1.14) |   2659 (1.53) |
+     8000000  |         9740 |    8486 (1.14) |   6260 (1.55) |
+    10000000  |        12830 |   10927 (1.17) |   8330 (1.54) |
+    20000000  |        30325 |   25370 (1.19) |  19376 (1.56) |
+
+for the 10^6 digit computation:
+    485ms total
+     = 53ms basecase
+     + 269ms fold
+       =  85ms ui_factor_get_fmpz_2exp
+       +  12ms ui_facor mul/gcd
+       + 171ms fmpz add/mul
+     + 150ms float at the end
 */
 
-#define CONST_PI_SUM_SPLIT_CUTOFF 50
+#define CONST_PI_SUM_SPLIT_CUTOFF 60
 
 /*
-    Set {p1, r1, q1} = sum of terms in start..stop inclusive.
+    Set {p, r, q} = sum of terms in start..stop inclusive.
     The factored number mult is 640320^3/24.
-
-    TODO: This basecase is quite important. The small word-sized mul's are not
-    the bottleneck. It is the ui_factor_ functions that want optimizations.
-    Or, a completely different approach to summation ...
 */
+#if 1
+static void pi_sum_basecase(
+    fmpz_t p, ui_factor_t & r, ui_factor_t & q,
+    ulong start, ulong stop, const ui_factor_t & mult)
+{
+    mp_limb_t out, a[2];
+    fmpz_t s;
+    fmpz_init(s);
+
+    r.fit_length(8*(stop - start + 1));
+    q.fit_length(8*(stop - start + 1));
+
+//std::cout << "---------------------------" << std::endl;
+//std::cout << "pi_sum_basecase " << start << " .. " << stop << std::endl;
+
+    __mpz_struct * P = _fmpz_promote(p);
+    mp_limb_t * p_d = FLINT_MPZ_REALLOC(P, stop - start + 20);
+    slong p_n;
+
+    __mpz_struct * S = _fmpz_promote(s);
+    mp_limb_t * s_d = FLINT_MPZ_REALLOC(S, 2*(stop - start) + 30);
+    slong s_n;
+
+    assert(1 <= start);
+    assert(start <= stop);
+
+    ui_factor_one(r);
+    ui_factor_one(q);
+
+    ulong j = start;
+
+    ui_factor_push_ui(q, j);
+
+    ui_factor_push_ui(r, 2*j-1);
+    ui_factor_push_ui(r, 6*j-1);
+    ui_factor_push_ui(r, 6*j-5);
+
+    umul_ppmm(s_d[1], s_d[0], 6*j-1, 6*j-5);
+    s_n = 1 + (s_d[1] != 0);
+    out = mpn_mul_1(s_d, s_d, s_n, 2*j-1);
+    s_d[s_n] = out;
+    s_n += (out != 0);
+
+    // a = 13591409 + 545140134*j
+    umul_ppmm(a[1], a[0], j, 545140134);
+    add_ssaaaa(a[1], a[0], a[1], a[0], 0, 13591409);
+
+    // p = s*a
+    if (a[1] == 0)
+    {
+        out = mpn_mul_1(p_d, s_d, s_n, a[0]);
+        p_d[s_n] = out;
+        p_n = s_n + (out != 0);
+    }
+    else
+    {
+        out = mpn_mul_1(p_d + 1, s_d, s_n, a[1]);
+        p_d[s_n + 1] = out;
+        p_n = s_n + 1 + (out != 0);
+
+        out = mpn_addmul_1(p_d, s_d, s_n, a[0]);
+        if (out != 0)
+            out = mpn_add_1(p_d + s_n, p_d + s_n, p_n - s_n, out);
+        p_d[p_n] = out;
+        p_n += (out != 0);
+    }
+
+    for (++j; j <= stop; ++j)
+    {
+        ui_factor_push_ui(q, j);
+
+        ui_factor_push_ui(r, 2*j-1);
+        ui_factor_push_ui(r, 6*j-1);
+        ui_factor_push_ui(r, 6*j-5);
+
+        // s *= (2*j-1)*(6*j-1)*(6*j-5)
+        s_n = mpn_mul3_ui(s_d, s_n, 2*j-1, 6*j-5, 6*j-1);
+
+        // p *= 10939058860032000*j^3
+        p_n = mpn_mul3_ui(p_d, p_n, j, j, j);
+        out = mpn_mul_1(p_d, p_d, p_n, 10939058860032000);
+        p_d[p_n] = out;
+        p_n += (out != 0);
+
+        // a = 13591409 + 545140134*j
+        add_ssaaaa(a[1], a[0], a[1], a[0], 0, 545140134);
+
+        // p +-= s*a
+        assert(p_n >= s_n);
+        if ((j ^ start) & 1)
+        {
+            if (a[1] != 0)
+            {
+                out = mpn_submul_1(p_d + 1, s_d, s_n, a[1]);
+                if (p_n > s_n + 1 && out != 0)
+                    out = mpn_sub_1(p_d + (s_n + 1), p_d + (s_n + 1), p_n - (s_n + 1), out);
+                assert(out == 0);
+                while (p_d[p_n - 1] == 0)
+                {
+                    assert(p_n > 0);
+                    p_n--;
+                }
+            }
+
+            assert(p_n >= s_n);
+
+            out = mpn_submul_1(p_d, s_d, s_n, a[0]);
+            if (p_n > s_n && out != 0)
+                out = mpn_sub_1(p_d + s_n, p_d + s_n, p_n - s_n, out);
+            assert(out == 0);
+            while (p_d[p_n - 1] == 0)
+            {
+                assert(p_n > 0);
+                p_n--;
+            }
+        }
+        else
+        {
+            out = mpn_addmul_1(p_d, s_d, s_n, a[0]);
+            if (p_n > s_n && out != 0)
+                out = mpn_add_1(p_d + s_n, p_d + s_n, p_n - s_n, out);
+            p_d[p_n] = out;
+            p_n += (out != 0);
+
+            if (a[1] != 0)
+            {
+                assert(p_n >= s_n + 1);                
+                out = mpn_addmul_1(p_d + 1, s_d, s_n, a[1]);
+                if (p_n > s_n + 1 && out != 0)
+                    out = mpn_add_1(p_d + s_n + 1, p_d + s_n + 1, p_n - (s_n + 1), out);
+                p_d[p_n] = out;
+                p_n += (out != 0);
+            }
+        }
+
+        s_d = FLINT_MPZ_REALLOC(S, s_n + 3);
+        p_d = FLINT_MPZ_REALLOC(P, p_n + 4);
+    }
+
+    ui_factor_sort_terms(q);
+    ui_factor_combine_like_terms(q);
+    ui_factor_pow_inplace(q, 3);
+    ui_factor_mul_inplace(q, mult, stop - start + 1);
+
+    ui_factor_sort_terms(r);
+    ui_factor_combine_like_terms(r);
+
+    S->_mp_size = s_n;
+    _fmpz_demote_val(s);
+    assert(ui_factor_equal_fmpz(r, s));
+
+    P->_mp_size = (start & 1) ? -p_n : p_n;
+    _fmpz_demote_val(p);
+
+    fmpz_clear(s);
+}
+
+#else
 static void pi_sum_basecase(
     fmpz_t p1, ui_factor_t & r1f, ui_factor_t & q1f,
     ulong start, ulong stop, const ui_factor_t & mult)
@@ -579,6 +911,7 @@ static void pi_sum_basecase(
 
     } while (++j <= stop);
 }
+#endif
 
 
 // {p1, r1, q1} = {p1*q2 + r1*p2, r1*r2, q1*q2} / GCD[r1, q2]
@@ -590,10 +923,19 @@ static void fold(
     xfmpz_t t, t1, t2;
     ui_factor_t s;
 
+timeit_t timer;
+timeit_ustart(timer);
+
     ui_factor_remove_gcd(r1, q2);
+
+ulong ttt1 = timeit_uquery(timer);
+
 
     ulong e1 = ui_factor_get_fmpz_2exp(t1.data, q2);
     ulong e2 = ui_factor_get_fmpz_2exp(t2.data, r1);
+
+ulong ttt2 = timeit_uquery(timer);
+
 
     if (e1 >= e2)
     {
@@ -611,6 +953,8 @@ static void fold(
     }
     fmpz_swap(p1, t.data);
 
+ulong ttt3 = timeit_uquery(timer);
+
     ui_factor_mul(s, q1, q2);
     std::swap(q1, s);
 
@@ -619,6 +963,15 @@ static void fold(
         ui_factor_mul(s, r1, r2);
         std::swap(r1, s);
     }
+
+ulong ttt4 = timeit_uquery(timer);
+
+timer_fold += ttt4;
+
+timer_fold_expand += ttt2-ttt1;
+timer_fold_factor += ttt1 + ttt4-ttt3;
+timer_fold_fmpz += ttt3-ttt2;
+
 }
 
 // Set {p, r, q} = sum of terms in start..stop inclusive.
@@ -633,6 +986,8 @@ static void pi_sum_split(
 
     ulong diff = stop - start;
 
+timeit_t timer;
+
     if (diff > 2*CONST_PI_SUM_SPLIT_CUTOFF)
     {
         ulong mid = diff/16*9 + start;
@@ -643,13 +998,18 @@ static void pi_sum_split(
     else if (diff > CONST_PI_SUM_SPLIT_CUTOFF)
     {
         ulong mid = diff/2 + start;
+timeit_ustart(timer);
         pi_sum_basecase(p, r, q, start, mid, mult);
         pi_sum_basecase(p1.data, r1, q1, mid + 1, stop, mult);
+timer_basecase += timeit_uquery(timer);
+
         fold(p, r, q, p1.data, r1, q1, needr);
     }
     else
     {
+timeit_ustart(timer);
         pi_sum_basecase(p, r, q, start, stop, mult);
+timer_basecase += timeit_uquery(timer);
     }
 }
 
@@ -664,6 +1024,14 @@ ex ncode_sPi(er e, slong prec)
     xfmpz_t p, q;
     ui_factor_t rf, qf, mult;
     xarb_t P, Q, U, T;
+
+timer_basecase = 0;
+timer_fold = 0;
+timer_float = 0;
+timer_fold_expand = 0;
+timer_fold_fmpz = 0;
+timer_fold_factor = 0;
+
 
 timeit_t timer;
 timeit_start(timer);
@@ -687,7 +1055,8 @@ timeit_start(timer);
            U = ------------------------------
                (p + 13591409*q)*rsqrt(640320)
     */
-
+timeit_t timer2;
+timeit_ustart(timer2);
     ulong qe = ui_factor_get_fmpz_2exp(q.data, qf);
     arb_set_round_fmpz(Q.data, q.data, wp);
     arb_mul_2exp_si(Q.data, Q.data, qe);
@@ -703,19 +1072,30 @@ timeit_start(timer);
 
     arb_div(U.data, Q.data, T.data, wp);
 
+timer_float += timeit_uquery(timer2);
+
     free(sieve);
+
+timeit_stop(timer);
+flint_printf("     new time: %wd ms\n", timer->wall);
+
+flint_printf("basecase time: +%wd ms\n", timer_basecase/1000);
+flint_printf("    fold time: +%wd ms\n", timer_fold/1000);
+flint_printf("  expand time: ++%wd ms\n", timer_fold_expand/1000);
+flint_printf("    fmpz time: ++%wd ms\n", timer_fold_fmpz/1000);
+flint_printf("  factor time: ++%wd ms\n", timer_fold_factor/1000);
+flint_printf("   float time: +%wd ms\n", timer_float/1000);
 
 //std::cout << "U: " << U.tostring() << std::endl;
 
-timeit_stop(timer);
-flint_printf("new time: %wd\n", timer->wall);
+
 
     ex zzz = emake_real();
 timeit_start(timer);
     arb_const_pi(ereal_data(zzz), prec);
-//std::cout << "z: " << ereal_number(zzz).tostring() << std::endl;
 timeit_stop(timer);
-flint_printf("arb time: %wd\n", timer->wall);
+flint_printf("     arb time: %wd ms\n", timer->wall);
+//std::cout << "z: " << ereal_number(zzz).tostring() << std::endl;
 
     return zzz;
 }
